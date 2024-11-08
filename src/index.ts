@@ -1,15 +1,12 @@
 import cron from 'node-cron';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
+import { Client } from 'pg';
 
 // Import AWS SDK v3 modules
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 require('dotenv').config();
-
-const execAsync = promisify(exec);
 
 // Configure AWS S3 Client
 const s3Client = new S3Client({
@@ -111,15 +108,23 @@ async function processFile(key: string) {
     WITH (format 'parquet');
   `;
 
-  // Execute the COPY command using psql
-  const psqlCommand = `psql "${process.env.DB_URL}" -c "${copyCommand}"`;
+  // Create a new PostgreSQL client
+  const client = new Client({
+    connectionString: process.env.DB_URL,
+  });
 
-  await execAsync(psqlCommand);
+  try {
+    await client.connect();
+    await client.query(copyCommand);
+    console.log(`Successfully ingested file: ${key}`);
 
-  console.log(`Successfully ingested file: ${key}`);
-
-  // Run migration scripts if necessary
-  await runMigrationScripts(tableName);
+    // Run migration scripts if necessary
+    await runMigrationScripts(tableName, client);
+  } catch (err) {
+    console.error(`Error ingesting file ${key}:`, err);
+  } finally {
+    await client.end();
+  }
 }
 
 // Helper function to extract the table name from the S3 key
@@ -130,18 +135,13 @@ function getTableNameFromKey(key: string): string {
 }
 
 // Function to run migration scripts based on the table name
-async function runMigrationScripts(tableName: string) {
-  // Add logic to run migration scripts for specific tables
-  // For example:
+async function runMigrationScripts(tableName: string, client: Client) {
   if (tableName === 'farcaster_profile_with_addresses') {
-    const psqlCommand = `psql "${process.env.DB_URL}" -f "${path.resolve(
-      process.cwd(),
-      'sql',
-      'migrate_profiles.sql'
-    )}"`;
-
-    await execAsync(psqlCommand);
-
+    const migrateScript = fs.readFileSync(
+      path.resolve(process.cwd(), 'sql', 'migrate_profiles.sql'),
+      'utf-8'
+    );
+    await client.query(migrateScript);
     console.log(
       'Migration script executed for farcaster_profile_with_addresses'
     );
