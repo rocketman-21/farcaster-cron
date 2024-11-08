@@ -21,6 +21,22 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
     root_parent_url TEXT
 );
 
+-- -- Create index on root_parent_hash
+CREATE INDEX IF NOT EXISTS idx_production_cast_root_parent_hash
+ON production.farcaster_casts (root_parent_hash);
+
+-- -- Create index on fid
+CREATE INDEX IF NOT EXISTS idx_production_cast_fid
+ON production.farcaster_casts (fid);
+
+-- -- Create index on parent_hash
+CREATE INDEX IF NOT EXISTS idx_production_cast_parent_hash
+ON production.farcaster_casts (parent_hash);
+
+-- -- Create index on root_parent_url
+CREATE INDEX IF NOT EXISTS idx_production_cast_root_parent_url
+ON production.farcaster_casts (root_parent_url);
+
 -- Create the staging schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS staging;
 
@@ -47,10 +63,6 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
 -- Create index on fid
 CREATE INDEX IF NOT EXISTS idx_staging_cast_fid
 ON staging.farcaster_casts (fid);
-
--- Create index on root_parent_url
-CREATE INDEX IF NOT EXISTS idx_staging_cast_root_parent_url
-ON staging.farcaster_casts (root_parent_url);
 
 -- Migration script with temporary table for deduplication
 DO $$
