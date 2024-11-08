@@ -48,6 +48,10 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
 CREATE INDEX IF NOT EXISTS idx_staging_cast_fid
 ON staging.farcaster_casts (fid);
 
+-- Create index on root_parent_url
+CREATE INDEX IF NOT EXISTS idx_staging_cast_root_parent_url
+ON staging.farcaster_casts (root_parent_url);
+
 -- Migration script with temporary table for deduplication
 DO $$
 DECLARE
@@ -126,7 +130,15 @@ BEGIN
         FROM
             temp_deduplicated_casts
         WHERE
-            id > last_id AND id <= current_max_id
+            id > last_id 
+            AND id <= current_max_id
+            AND root_parent_url IN (
+                'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
+                'https://warpcast.com/~/channel/vrbs',
+                'https://warpcast.com/~/channel/flows',
+                'https://warpcast.com/~/channel/yellow',
+                'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c'
+            )
         ORDER BY
             id
         ON CONFLICT (id) DO UPDATE SET
