@@ -46,8 +46,12 @@ for (const type of Object.keys(prefixes)) {
 // Set min time as 10 minutes ago
 const minTime = Date.now() - 10 * 60 * 1000;
 
+const isDev = process.env.NODE_ENV === 'development';
+const fiveSeconds = '*/5 * * * * *';
+const twoMinutes = '*/2 * * * *';
+
 // Schedule the cron job
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
   console.log('Checking for new Parquet files...');
   console.log({
     startTime: `${new Date(minTime)} (${minTime})`,

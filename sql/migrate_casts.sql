@@ -132,13 +132,13 @@ BEGIN
         WHERE
             id > last_id 
             AND id <= current_max_id
-            AND root_parent_url IN (
-                'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
-                'https://warpcast.com/~/channel/vrbs',
-                'https://warpcast.com/~/channel/flows',
-                'https://warpcast.com/~/channel/yellow',
-                'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c'
-            )
+            -- AND root_parent_url IN (
+            --     'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
+            --     'https://warpcast.com/~/channel/vrbs',
+            --     'https://warpcast.com/~/channel/flows',
+            --     'https://warpcast.com/~/channel/yellow',
+            --     'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c'
+            -- )
         ORDER BY
             id
         ON CONFLICT (id) DO UPDATE SET
@@ -166,6 +166,6 @@ BEGIN
     DROP TABLE IF EXISTS temp_deduplicated_casts;
 
     -- Truncate the staging table
-    TRUNCATE TABLE staging.farcaster_casts;
+    -- TRUNCATE TABLE staging.farcaster_casts;
 
 END $$ LANGUAGE plpgsql;
