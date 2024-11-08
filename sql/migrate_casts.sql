@@ -27,10 +27,10 @@ CREATE SCHEMA IF NOT EXISTS staging;
 -- Create the staging table if it doesn't exist
 CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
     id BIGINT,
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
-    timestamp BIGINT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP,
+    timestamp TIMESTAMP,
     fid BIGINT,
     hash BYTEA,
     parent_hash BYTEA,
@@ -108,10 +108,10 @@ BEGIN
         )
         SELECT
             id,
-            TO_TIMESTAMP(created_at / 1000000.0),
-            TO_TIMESTAMP(updated_at / 1000000.0),
-            TO_TIMESTAMP(deleted_at / 1000000.0),
-            TO_TIMESTAMP(timestamp / 1000000.0),
+            created_at,
+            updated_at,
+            deleted_at,
+            timestamp,
             fid,
             hash,
             parent_hash,
@@ -153,4 +153,4 @@ BEGIN
     -- Drop the temporary table
     DROP TABLE IF EXISTS temp_deduplicated_casts;
 
-END $$ LANGUAGE plpgsql; 
+END $$ LANGUAGE plpgsql;

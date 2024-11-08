@@ -25,14 +25,22 @@ const prefixes = {
   casts: 'public-postgres/farcaster/v2/incremental/farcaster-casts',
 };
 
-// Path to store the latest processed timestamp
-const timestampFilePath = path.resolve(__dirname, 'latest_timestamp.txt');
+// Path to store the latest processed timestamps
+const timestampDir = path.resolve(__dirname, 'timestamps');
+if (!fs.existsSync(timestampDir)) {
+  fs.mkdirSync(timestampDir);
+}
 
-// Initialize latestProcessedTimestamp from the file
-let latestProcessedTimestamp = 0;
-if (fs.existsSync(timestampFilePath)) {
-  const timestampStr = fs.readFileSync(timestampFilePath, 'utf-8');
-  latestProcessedTimestamp = parseInt(timestampStr, 10) || 0;
+// Initialize latestProcessedTimestamps for each type
+const latestProcessedTimestamps: Record<string, number> = {};
+for (const type of Object.keys(prefixes)) {
+  const timestampPath = path.resolve(timestampDir, `${type}_timestamp.txt`);
+  if (fs.existsSync(timestampPath)) {
+    const timestampStr = fs.readFileSync(timestampPath, 'utf-8');
+    latestProcessedTimestamps[type] = parseInt(timestampStr, 10) || 0;
+  } else {
+    latestProcessedTimestamps[type] = 0;
+  }
 }
 
 // Set min time as 10 minutes ago
@@ -43,13 +51,18 @@ cron.schedule('*/5 * * * * *', async () => {
   console.log('Checking for new Parquet files...');
   console.log({
     startTime: `${new Date(minTime)} (${minTime})`,
-    lastProcessed: latestProcessedTimestamp
-      ? `${new Date(latestProcessedTimestamp)} (${latestProcessedTimestamp})`
-      : 'never',
+    lastProcessed: Object.entries(latestProcessedTimestamps).reduce(
+      (acc, [type, timestamp]) => ({
+        ...acc,
+        [type]: timestamp ? `${new Date(timestamp)} (${timestamp})` : 'never',
+      }),
+      {}
+    ),
   });
 
   // Process each prefix
   for (const [type, prefix] of Object.entries(prefixes)) {
+    console.log(`Processing ${type} Parquet files...`);
     let continuationToken: string | undefined = undefined;
 
     try {
@@ -72,7 +85,10 @@ cron.schedule('*/5 * * * * *', async () => {
           const key = item.Key!;
           if (key.endsWith('.parquet')) {
             const timestamp = extractTimestampFromKey(key);
-            if (timestamp > latestProcessedTimestamp && timestamp > minTime) {
+            if (
+              timestamp > (latestProcessedTimestamps[type] || 0) &&
+              timestamp > minTime
+            ) {
               // Process the file
               console.log(
                 `Processing new file: ${key} with timestamp ${new Date(
@@ -80,9 +96,12 @@ cron.schedule('*/5 * * * * *', async () => {
                 )}`
               );
               await processFile(key);
-              // Update the latest processed timestamp
-              latestProcessedTimestamp = timestamp;
-              fs.writeFileSync(timestampFilePath, timestamp.toString());
+              // Update the latest processed timestamp for this type
+              latestProcessedTimestamps[type] = timestamp;
+              fs.writeFileSync(
+                path.resolve(timestampDir, `${type}_timestamp.txt`),
+                timestamp.toString()
+              );
             }
           }
         }
