@@ -31,7 +31,7 @@ export async function processFile(key: string) {
     // await runMigrationScripts(tableName, client);
 
     if (tableName === 'farcaster_casts') {
-      await processCastsAfterMigration(tableName, client);
+      //   await processCastsAfterMigration(tableName, client);
     }
   } catch (err) {
     console.error(`Error ingesting file ${key}:`, err);
