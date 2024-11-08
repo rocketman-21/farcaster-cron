@@ -2,8 +2,7 @@ import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { bucketName, getTableNameFromKey } from './s3';
-import { postToEmbeddingsQueueRequest } from './queue';
-import { JobBody } from './job';
+import { processCasts } from './embedCasts';
 
 // Function to process a single file
 export async function processFile(key: string) {
@@ -61,104 +60,28 @@ async function runMigrationScripts(tableName: string, client: Client) {
 // Function to process casts after migration
 async function processCastsAfterMigration(tableName: string, client: Client) {
   if (tableName === 'farcaster_casts') {
-    // Fetch data from the staging table
-    const res = await client.query('SELECT * FROM staging.farcaster_casts');
-    const casts: {
-      id: bigint;
-      created_at: Date;
-      updated_at: Date;
-      deleted_at: Date | null;
-      timestamp: Date;
-      fid: bigint;
-      hash: Buffer;
-      parent_hash: Buffer | null;
-      parent_fid: bigint | null;
-      parent_url: string | null;
-      text: string;
-      embeds: string | null;
-      mentions: string | null;
-      mentions_positions: string | null;
-      root_parent_hash: Buffer | null;
-      root_parent_url: string | null;
-    }[] = res.rows;
+    const batchSize = 1000;
+    let offset = 0;
+    let hasMore = true;
 
-    for (const cast of casts) {
-      const payload: JobBody = {
-        type: 'cast',
-        content: cast.text,
-        externalId: cast.id.toString(),
-        users: [],
-        groups: [],
-        tags: [],
-      };
+    while (hasMore) {
+      // Fetch data in batches
+      const res = await client.query(
+        'SELECT * FROM staging.farcaster_casts ORDER BY id LIMIT $1 OFFSET $2',
+        [batchSize, offset]
+      );
 
-      // Include the fid (user ID) in the users array
-      if (cast.fid) {
-        payload.users.push(cast.fid.toString());
-
-        // Get verified addresses for the cast author
-        const profileRes = await client.query(
-          'SELECT verified_addresses FROM production.farcaster_profile WHERE fid = $1',
-          [cast.fid]
-        );
-        if (profileRes.rows[0]?.verified_addresses) {
-          payload.users.push(...profileRes.rows[0].verified_addresses);
-        }
+      if (res.rows.length === 0) {
+        hasMore = false;
+        continue;
       }
 
-      // Parse mentions and add to users array along with their verified addresses
-      if (cast.mentions) {
-        try {
-          const mentionsArray = JSON.parse(cast.mentions);
-          if (Array.isArray(mentionsArray)) {
-            for (const mention of mentionsArray) {
-              payload.users.push(mention.toString());
+      await processCasts(res.rows, client);
+      console.log(
+        `Successfully processed batch of ${res.rows.length} casts (offset: ${offset})`
+      );
 
-              // Get verified addresses for mentioned users
-              const mentionProfileRes = await client.query(
-                'SELECT verified_addresses FROM production.farcaster_profile WHERE fid = $1',
-                [mention]
-              );
-              if (mentionProfileRes.rows[0]?.verified_addresses) {
-                payload.users.push(
-                  ...mentionProfileRes.rows[0].verified_addresses
-                );
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Error parsing mentions for cast ${cast.id}:`, error);
-        }
-      }
-
-      // Add groups based on root_parent_url
-      if (cast.root_parent_url) {
-        payload.groups.push(cast.root_parent_url);
-      }
-
-      // Map root_parent_url to tags
-      const tagMappings: Record<string, string[]> = {
-        'https://warpcast.com/~/channel/flows': ['flows'],
-        'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03': [
-          'grants',
-        ],
-        'https://warpcast.com/~/channel/yellow': ['drafts'],
-        // Add additional mappings as needed
-      };
-
-      if (cast.root_parent_url && tagMappings[cast.root_parent_url]) {
-        payload.tags.push(...tagMappings[cast.root_parent_url]);
-      }
-
-      try {
-        await postToEmbeddingsQueueRequest(payload);
-        console.log(`Successfully posted cast ${cast.id} to embeddings queue`);
-      } catch (err) {
-        console.error(
-          `Failed to post cast ${cast.id} to embeddings queue:`,
-          err
-        );
-      }
+      offset += batchSize;
     }
   }
 }
