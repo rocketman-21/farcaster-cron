@@ -11,6 +11,7 @@ import {
   s3Client,
 } from './lib/s3';
 import { processFile } from './lib/processFile';
+// import { backfillEmbed } from './scripts/backfillEmbed';
 
 // Path to store the latest processed timestamps
 const timestampDir = path.resolve(__dirname, 'timestamps');
@@ -37,8 +38,24 @@ const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
 
+// async function main() {
+//   await backfillEmbed();
+// }
+
+// main();
+
+let isProcessing = false;
+
 // Schedule the cron job
 cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
+  if (isProcessing) {
+    console.log('Already processing, skipping...');
+    return;
+  }
+  isProcessing = true;
+  // Set to keep track of processed keys in the current run
+  const processedKeys = new Set<string>();
+
   console.log('Checking for new Parquet files...');
   console.log({
     startTime: `${new Date(minTime)} (${minTime})`,
@@ -72,14 +89,24 @@ cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
         const objects = data.Contents || [];
 
         // Process the retrieved objects
-        for (const item of objects) {
+        for (let i = 0; i < objects.length; i++) {
+          const item = objects[i];
           const key = item.Key!;
           if (key.endsWith('.parquet')) {
             const timestamp = extractTimestampFromKey(key);
             if (
               timestamp > (latestProcessedTimestamps[type] || 0) &&
-              timestamp > minTime
+              timestamp > minTime &&
+              !processedKeys.has(key)
             ) {
+              processedKeys.add(key);
+              // Update the latest processed timestamp for this type
+              latestProcessedTimestamps[type] = timestamp;
+              fs.writeFileSync(
+                path.resolve(timestampDir, `${type}_timestamp.txt`),
+                timestamp.toString()
+              );
+
               // Process the file
               console.log(
                 `Processing new file: ${key} with timestamp ${new Date(
@@ -87,12 +114,6 @@ cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
                 )}`
               );
               await processFile(key);
-              // Update the latest processed timestamp for this type
-              latestProcessedTimestamps[type] = timestamp;
-              fs.writeFileSync(
-                path.resolve(timestampDir, `${type}_timestamp.txt`),
-                timestamp.toString()
-              );
             }
           }
         }
