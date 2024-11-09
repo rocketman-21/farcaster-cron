@@ -21,15 +21,28 @@ export interface Cast {
   root_parent_url: string | null;
 }
 
+function pushToUsers(users: string[], value: string, cast: Cast) {
+  // Only validate length for ETH addresses (starting with 0x)
+  if (value.startsWith('0x') && value.length !== 42) {
+    return;
+  }
+
+  users.push(value);
+}
+
 export async function processCasts(casts: Cast[], client: Client) {
-  for (const cast of casts) {
+  const promises = casts.map(async (cast) => {
+    const content = cleanTextForEmbedding(cast.text);
+    if (!content || content == '') return;
+
     const payload: JobBody = {
       type: 'cast',
-      content: cast.text,
-      externalId: cast.id.toString(),
+      content,
+      externalId: `0x${cast.hash.toString('hex')}`, // Convert buffer to hex string
       users: [],
       groups: [],
       tags: [],
+      hashSuffix: cast.fid.toString(),
     };
 
     // Include the fid (user ID) and verified addresses in the users array
@@ -43,16 +56,20 @@ export async function processCasts(casts: Cast[], client: Client) {
         [cast.fid]
       );
       const verifiedAddresses = profileRes.rows[0]?.verified_addresses || [];
-      payload.users.push(...verifiedAddresses.flat());
+
+      for (const address of verifiedAddresses.flat()) {
+        pushToUsers(payload.users, address, cast);
+      }
     }
 
-    // Parse mentions and add to users array along with their verified addresses
+    // Parse mentions and add to tags array along with their verified addresses
     if (cast.mentions) {
       try {
         const mentionsArray = JSON.parse(cast.mentions);
         if (Array.isArray(mentionsArray)) {
           for (const mention of mentionsArray) {
-            payload.users.push(mention.toString());
+            // push mention to tags
+            payload.tags.push(mention.toString());
 
             // Get verified addresses for mentioned users
             const mentionProfileRes = await client.query(
@@ -67,7 +84,10 @@ export async function processCasts(casts: Cast[], client: Client) {
           }
         }
       } catch (error) {
-        console.error(`Error parsing mentions for cast ${cast.id}:`, error);
+        console.error(
+          `Error parsing mentions for cast 0x${cast.hash.toString('hex')}:`,
+          error
+        );
       }
     }
 
@@ -79,26 +99,38 @@ export async function processCasts(casts: Cast[], client: Client) {
       payload.groups.push(cast.parent_url);
     }
 
-    // Map root_parent_url to tags
-    const tagMappings: Record<string, string[]> = {
-      'https://warpcast.com/~/channel/flows': ['flows'],
-      'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03': [
-        'grants',
-      ],
-      'https://warpcast.com/~/channel/yellow': ['drafts'],
-    };
+    return postToEmbeddingsQueueRequest(payload);
+  });
 
-    if (cast.root_parent_url && tagMappings[cast.root_parent_url]) {
-      payload.tags.push(...tagMappings[cast.root_parent_url]);
-    }
-
-    console.log(payload);
-
-    try {
-      //   await postToEmbeddingsQueueRequest(payload);
-      console.log(`Successfully posted cast ${cast.id} to embeddings queue`);
-    } catch (err) {
-      console.error(`Failed to post cast ${cast.id} to embeddings queue:`, err);
-    }
+  const filteredPromises = promises.filter(Boolean);
+  for (let i = 0; i < filteredPromises.length; i += 100) {
+    const batch = filteredPromises.slice(i, i + 100);
+    await Promise.all(batch);
   }
 }
+
+export const cleanTextForEmbedding = (text: string) => {
+  return (
+    text
+      // Remove actual newline and carriage return characters
+      .replace(/(\r\n|\n|\r)/g, ' ')
+      // Replace escaped newline and carriage return sequences with a space
+      .replace(/\\n|\\r/g, ' ')
+      // Remove markdown images
+      .replace(/!\[[^\]]*\]\([^\)]*\)/g, '')
+      // Remove markdown headings
+      .replace(/^#+\s/gm, '')
+      // Remove markdown list markers (- or *)
+      .replace(/^[-*]\s/gm, '')
+      // Remove HTML tags if any
+      .replace(/<[^>]+>/g, ' ')
+      // Normalize multiple spaces to a single space
+      .replace(/\s+/g, ' ')
+      // Remove unnecessary characters like # and *
+      .replace(/[#*]/g, ' ')
+      // Trim leading and trailing whitespace
+      .trim()
+      // Convert to lowercase
+      .toLowerCase()
+  );
+};
