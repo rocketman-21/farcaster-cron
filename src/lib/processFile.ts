@@ -26,12 +26,12 @@ export async function processFile(key: string, type: IngestionType) {
     await client.query(copyCommand);
     console.log(`Successfully ingested file: ${key}`);
 
+    if (type === 'casts') {
+      await processCastsFromStagingTable(type, client);
+    }
+
     // Run migration scripts if necessary
     await runMigrationScripts(tableName, client);
-
-    if (type === 'casts') {
-      await processCastsAfterMigration(type, client);
-    }
   } catch (err) {
     console.error(`Error ingesting file ${key}:`, err);
   } finally {
@@ -58,7 +58,10 @@ async function runMigrationScripts(tableName: string, client: Client) {
 }
 
 // Function to process casts after migration
-async function processCastsAfterMigration(type: IngestionType, client: Client) {
+async function processCastsFromStagingTable(
+  type: IngestionType,
+  client: Client
+) {
   if (type === 'casts') {
     const batchSize = 1000;
     let offset = 0;

@@ -5,11 +5,21 @@ import {
   logProcessingStatus,
 } from './utils';
 import { prefixes } from '../lib/s3';
+import fs from 'fs';
+import path from 'path';
+import { downloadProfiles } from './download-profiles';
 
 // Set min time as 10 minutes ago
-const minTime = Date.now() - 24 * 60 * 60 * 1000;
+const minTime = Date.now() - 10 * 60 * 1000;
 
 export const casts = async () => {
+  // Check if profiles file exists and download if needed
+  const profilesPath = path.resolve(__dirname, '../data/profiles.csv');
+  if (!fs.existsSync(profilesPath)) {
+    console.log('Profiles file not found, downloading profiles first...');
+    await downloadProfiles();
+  }
+
   const latestProcessedTimestamps = initializeTimestamps();
   logProcessingStatus(minTime, latestProcessedTimestamps);
 

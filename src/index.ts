@@ -6,11 +6,12 @@ import { downloadProfiles } from './crons/download-profiles';
 const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
+const tenMinutes = '*/10 * * * *';
 const twentyFourHours = '0 0 */24 * *';
 
 const schedules: Record<string, { dev: string; prod: string }> = {
-  casts: { dev: fiveSeconds, prod: twoMinutes },
-  profiles: { dev: fiveSeconds, prod: twoMinutes },
+  casts: { dev: fiveSeconds, prod: fiveSeconds },
+  profiles: { dev: fiveSeconds, prod: tenMinutes },
   downloadProfiles: { dev: fiveSeconds, prod: twentyFourHours },
 };
 
@@ -21,8 +22,8 @@ const isProcessing: Record<string, boolean> = {
 };
 
 const isEnabled: Record<string, boolean> = {
-  casts: false,
-  profiles: true,
+  casts: true,
+  profiles: false,
   downloadProfiles: false,
 };
 

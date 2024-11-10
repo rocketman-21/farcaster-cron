@@ -2,7 +2,7 @@ import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { JobBody } from './job';
-import { postToEmbeddingsQueueRequest } from './queue';
+import { postBulkToEmbeddingsQueueRequest } from './queue';
 import { cleanTextForEmbedding } from './embed';
 
 export interface Cast {
@@ -55,9 +55,11 @@ export async function processCasts(casts: Cast[], client: Client) {
   // Load profiles once for the batch
   const profiles = loadProfiles();
 
-  const promises = casts.map(async (cast) => {
+  const payloads: JobBody[] = [];
+
+  for (const cast of casts) {
     const content = cleanTextForEmbedding(cast.text);
-    if (!content || content == '') return;
+    if (!content || content == '') continue;
 
     const payload: JobBody = {
       type: 'cast',
@@ -111,13 +113,16 @@ export async function processCasts(casts: Cast[], client: Client) {
     if (cast.parent_url) {
       payload.groups.push(cast.parent_url);
     }
+    payloads.push(payload);
+  }
 
-    // return postToEmbeddingsQueueRequest(payload);
-  });
-
-  const filteredPromises = promises.filter(Boolean);
-  for (let i = 0; i < filteredPromises.length; i += 100) {
-    const batch = filteredPromises.slice(i, i + 100);
-    await Promise.all(batch);
+  const BATCH_SIZE = 100;
+  // Send payloads in batches
+  for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
+    const batch = payloads.slice(i, i + BATCH_SIZE);
+    await postBulkToEmbeddingsQueueRequest(batch);
+    console.log(
+      `Successfully called embeddings queue for batch of ${batch.length} casts (offset: ${i})`
+    );
   }
 }
