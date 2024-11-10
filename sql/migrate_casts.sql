@@ -178,6 +178,6 @@ BEGIN
     DROP TABLE IF EXISTS temp_deduplicated_casts;
 
     -- Truncate the staging table
-    TRUNCATE TABLE staging.farcaster_casts;
+    -- TRUNCATE TABLE staging.farcaster_casts;
 
 END $$ LANGUAGE plpgsql;

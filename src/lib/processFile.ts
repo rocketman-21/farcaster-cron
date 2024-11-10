@@ -1,11 +1,11 @@
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
-import { bucketName, getTableNameFromKey } from './s3';
+import { bucketName, getTableNameFromKey, IngestionType } from './s3';
 import { processCasts } from './embedCasts';
 
 // Function to process a single file
-export async function processFile(key: string) {
+export async function processFile(key: string, type: IngestionType) {
   const s3Url = `s3://${bucketName}/${key}`;
 
   // Ingest the Parquet file into PostgreSQL
@@ -29,8 +29,8 @@ export async function processFile(key: string) {
     // Run migration scripts if necessary
     await runMigrationScripts(tableName, client);
 
-    if (tableName === 'farcaster_casts') {
-      await processCastsAfterMigration(tableName, client);
+    if (type === 'casts') {
+      await processCastsAfterMigration(type, client);
     }
   } catch (err) {
     console.error(`Error ingesting file ${key}:`, err);
@@ -58,8 +58,8 @@ async function runMigrationScripts(tableName: string, client: Client) {
 }
 
 // Function to process casts after migration
-async function processCastsAfterMigration(tableName: string, client: Client) {
-  if (tableName === 'farcaster_casts') {
+async function processCastsAfterMigration(type: IngestionType, client: Client) {
+  if (type === 'casts') {
     const batchSize = 1000;
     let offset = 0;
     let hasMore = true;

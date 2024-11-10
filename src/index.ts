@@ -1,127 +1,63 @@
 import cron from 'node-cron';
-import fs from 'fs';
-import path from 'path';
-
-// Import AWS SDK v3 modules
-import { ListObjectsV2Command } from '@aws-sdk/client-s3';
-import {
-  bucketName,
-  extractTimestampFromKey,
-  prefixes,
-  s3Client,
-} from './lib/s3';
-import { processFile } from './lib/processFile';
-// import { backfillEmbed } from './scripts/backfillEmbed';
-
-// Path to store the latest processed timestamps
-const timestampDir = path.resolve(__dirname, 'timestamps');
-if (!fs.existsSync(timestampDir)) {
-  fs.mkdirSync(timestampDir);
-}
-
-// Initialize latestProcessedTimestamps for each type
-const latestProcessedTimestamps: Record<string, number> = {};
-for (const type of Object.keys(prefixes)) {
-  const timestampPath = path.resolve(timestampDir, `${type}_timestamp.txt`);
-  if (fs.existsSync(timestampPath)) {
-    const timestampStr = fs.readFileSync(timestampPath, 'utf-8');
-    latestProcessedTimestamps[type] = parseInt(timestampStr, 10) || 0;
-  } else {
-    latestProcessedTimestamps[type] = 0;
-  }
-}
-
-// Set min time as 10 minutes ago
-const minTime = Date.now() - 10 * 60 * 1000;
+import { casts } from './crons/casts';
+import { profiles } from './crons/profiles';
+import { downloadProfiles } from './crons/download-profiles';
 
 const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
+const twentyFourHours = '0 0 */24 * *';
 
-// async function main() {
-//   await backfillEmbed();
-// }
+const isProcessing: Record<string, boolean> = {
+  casts: false,
+  profiles: false,
+  downloadProfiles: false,
+};
 
-// main();
+const isEnabled: Record<string, boolean> = {
+  casts: false,
+  profiles: true,
+  downloadProfiles: false,
+};
 
-let isProcessing = false;
-
-// Schedule the cron job
+// Ingest casts from parquet files in S3
 cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
-  if (isProcessing) {
-    console.log('Already processing, skipping...');
+  if (!isEnabled.casts) {
     return;
   }
-  isProcessing = true;
-  // Set to keep track of processed keys in the current run
-  const processedKeys = new Set<string>();
-
-  console.log('Checking for new Parquet files...');
-  console.log({
-    startTime: `${new Date(minTime)} (${minTime})`,
-    lastProcessed: Object.entries(latestProcessedTimestamps).reduce(
-      (acc, [type, timestamp]) => ({
-        ...acc,
-        [type]: timestamp ? `${new Date(timestamp)} (${timestamp})` : 'never',
-      }),
-      {}
-    ),
-  });
-
-  // Process each prefix
-  for (const [type, prefix] of Object.entries(prefixes)) {
-    console.log(`Processing ${type} Parquet files...`);
-    let continuationToken: string | undefined = undefined;
-
-    try {
-      let params = {
-        Bucket: bucketName,
-        Prefix: prefix,
-        MaxKeys: 1000, // Adjust as needed
-        ContinuationToken: continuationToken as string | undefined,
-      };
-      do {
-        if (continuationToken) {
-          params.ContinuationToken = continuationToken;
-        }
-
-        const data = await s3Client.send(new ListObjectsV2Command(params));
-        const objects = data.Contents || [];
-
-        // Process the retrieved objects
-        for (let i = 0; i < objects.length; i++) {
-          const item = objects[i];
-          const key = item.Key!;
-          if (key.endsWith('.parquet')) {
-            const timestamp = extractTimestampFromKey(key);
-            if (
-              timestamp > (latestProcessedTimestamps[type] || 0) &&
-              timestamp > minTime &&
-              !processedKeys.has(key)
-            ) {
-              processedKeys.add(key);
-              // Update the latest processed timestamp for this type
-              latestProcessedTimestamps[type] = timestamp;
-              fs.writeFileSync(
-                path.resolve(timestampDir, `${type}_timestamp.txt`),
-                timestamp.toString()
-              );
-
-              // Process the file
-              console.log(
-                `Processing new file: ${key} with timestamp ${new Date(
-                  timestamp
-                )}`
-              );
-              await processFile(key);
-            }
-          }
-        }
-
-        continuationToken = data.NextContinuationToken;
-      } while (continuationToken);
-    } catch (error) {
-      console.error(`Error processing ${type} Parquet files:`, error);
-    }
+  if (isProcessing.casts) {
+    console.log('Already processing casts, skipping...');
+    return;
   }
+  isProcessing.casts = true;
+  await casts();
+  isProcessing.casts = false;
+});
+
+// Ingest profiles from parquet files in S3
+cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
+  if (!isEnabled.profiles) {
+    return;
+  }
+  if (isProcessing.profiles) {
+    console.log('Already processing profiles, skipping...');
+    return;
+  }
+  isProcessing.profiles = true;
+  await profiles();
+  isProcessing.profiles = false;
+});
+
+// Download profiles to CSV
+cron.schedule(isDev ? fiveSeconds : twentyFourHours, async () => {
+  if (!isEnabled.downloadProfiles) {
+    return;
+  }
+  if (isProcessing.downloadProfiles) {
+    console.log('Already downloading profiles, skipping...');
+    return;
+  }
+  isProcessing.downloadProfiles = true;
+  await downloadProfiles();
+  isProcessing.downloadProfiles = false;
 });

@@ -14,11 +14,13 @@ const s3Client = new S3Client({
 
 // S3 bucket and prefixes
 export const bucketName = 'tf-premium-parquet';
-export const prefixes = {
+export const prefixes: Record<IngestionType, string> = {
   profiles:
     'public-postgres/farcaster/v2/incremental/farcaster-profile_with_addresses',
   casts: 'public-postgres/farcaster/v2/incremental/farcaster-casts',
 };
+
+export type IngestionType = 'profiles' | 'casts';
 
 // Function to extract the timestamp from the S3 key
 export function extractTimestampFromKey(key: string): number {

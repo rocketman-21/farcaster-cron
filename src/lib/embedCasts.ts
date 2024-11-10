@@ -1,6 +1,9 @@
 import { Client } from 'pg';
+import fs from 'fs';
+import path from 'path';
 import { JobBody } from './job';
 import { postToEmbeddingsQueueRequest } from './queue';
+import { cleanTextForEmbedding } from './embed';
 
 export interface Cast {
   id: bigint;
@@ -30,7 +33,28 @@ function pushToUsers(users: string[], value: string, cast: Cast) {
   users.push(value);
 }
 
+// Load profiles from CSV
+const loadProfiles = () => {
+  const profilesPath = path.resolve(__dirname, '../data/profiles.csv');
+  const profiles = new Map<string, string[]>();
+
+  const lines = fs.readFileSync(profilesPath, 'utf-8').split('\n');
+  // Skip header
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const [fid, _, addresses] = line.split(',');
+    profiles.set(fid, addresses ? addresses.split('|') : []);
+  }
+
+  return profiles;
+};
+
 export async function processCasts(casts: Cast[], client: Client) {
+  // Load profiles once for the batch
+  const profiles = loadProfiles();
+
   const promises = casts.map(async (cast) => {
     const content = cleanTextForEmbedding(cast.text);
     if (!content || content == '') return;
@@ -50,14 +74,9 @@ export async function processCasts(casts: Cast[], client: Client) {
       const fid = cast.fid.toString();
       payload.users.push(fid);
 
-      // Get verified addresses for the cast author
-      const profileRes = await client.query(
-        'SELECT verified_addresses FROM production.farcaster_profile WHERE fid = $1',
-        [cast.fid]
-      );
-      const verifiedAddresses = profileRes.rows[0]?.verified_addresses || [];
-
-      for (const address of verifiedAddresses.flat()) {
+      // Get verified addresses from profiles map
+      const verifiedAddresses = profiles.get(fid) || [];
+      for (const address of verifiedAddresses) {
         pushToUsers(payload.users, address, cast);
       }
     }
@@ -68,19 +87,13 @@ export async function processCasts(casts: Cast[], client: Client) {
         const mentionsArray = JSON.parse(cast.mentions);
         if (Array.isArray(mentionsArray)) {
           for (const mention of mentionsArray) {
+            const mentionStr = mention.toString();
             // push mention to tags
-            payload.tags.push(mention.toString());
+            payload.tags.push(mentionStr);
 
-            // Get verified addresses for mentioned users
-            const mentionProfileRes = await client.query(
-              'SELECT verified_addresses FROM production.farcaster_profile WHERE fid = $1',
-              [mention]
-            );
-            if (mentionProfileRes.rows[0]?.verified_addresses) {
-              const verifiedAddresses =
-                mentionProfileRes.rows[0].verified_addresses.flat();
-              payload.tags.push(...verifiedAddresses);
-            }
+            // Get verified addresses for mentioned users from profiles map
+            const verifiedAddresses = profiles.get(mentionStr) || [];
+            payload.tags.push(...verifiedAddresses);
           }
         }
       } catch (error) {
@@ -99,7 +112,7 @@ export async function processCasts(casts: Cast[], client: Client) {
       payload.groups.push(cast.parent_url);
     }
 
-    return postToEmbeddingsQueueRequest(payload);
+    // return postToEmbeddingsQueueRequest(payload);
   });
 
   const filteredPromises = promises.filter(Boolean);
@@ -108,29 +121,3 @@ export async function processCasts(casts: Cast[], client: Client) {
     await Promise.all(batch);
   }
 }
-
-export const cleanTextForEmbedding = (text: string) => {
-  return (
-    text
-      // Remove actual newline and carriage return characters
-      .replace(/(\r\n|\n|\r)/g, ' ')
-      // Replace escaped newline and carriage return sequences with a space
-      .replace(/\\n|\\r/g, ' ')
-      // Remove markdown images
-      .replace(/!\[[^\]]*\]\([^\)]*\)/g, '')
-      // Remove markdown headings
-      .replace(/^#+\s/gm, '')
-      // Remove markdown list markers (- or *)
-      .replace(/^[-*]\s/gm, '')
-      // Remove HTML tags if any
-      .replace(/<[^>]+>/g, ' ')
-      // Normalize multiple spaces to a single space
-      .replace(/\s+/g, ' ')
-      // Remove unnecessary characters like # and *
-      .replace(/[#*]/g, ' ')
-      // Trim leading and trailing whitespace
-      .trim()
-      // Convert to lowercase
-      .toLowerCase()
-  );
-};
