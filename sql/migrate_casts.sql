@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
 CREATE INDEX IF NOT EXISTS idx_production_cast_root_parent_hash
 ON production.farcaster_casts (root_parent_hash);
 
+-- -- Create index on hash
+CREATE INDEX IF NOT EXISTS idx_production_cast_hash
+ON production.farcaster_casts (hash);
+
 -- -- Create index on fid
 CREATE INDEX IF NOT EXISTS idx_production_cast_fid
 ON production.farcaster_casts (fid);
