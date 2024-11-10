@@ -9,8 +9,8 @@ import fs from 'fs';
 import path from 'path';
 import { downloadProfiles } from './download-profiles';
 
-// Set min time as 20 minutes ago
-const minTime = Date.now() - 10 * 60 * 1000;
+// Set min time as 72 hours ago
+const minTime = Date.now() - 72 * 60 * 60 * 1000;
 
 export const casts = async () => {
   // Check if profiles file exists and download if needed
