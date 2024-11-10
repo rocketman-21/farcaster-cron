@@ -7,12 +7,12 @@ const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
 const tenMinutes = '*/10 * * * *';
-const twentyFourHours = '0 0 */24 * *';
+const sixHours = '0 0 */6 * *';
 
 const schedules: Record<string, { dev: string; prod: string }> = {
-  casts: { dev: fiveSeconds, prod: fiveSeconds },
+  casts: { dev: fiveSeconds, prod: tenMinutes },
   profiles: { dev: fiveSeconds, prod: tenMinutes },
-  downloadProfiles: { dev: fiveSeconds, prod: twentyFourHours },
+  downloadProfiles: { dev: fiveSeconds, prod: sixHours },
 };
 
 const isProcessing: Record<string, boolean> = {
