@@ -1,4 +1,3 @@
-import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { JobBody } from './job';
@@ -51,7 +50,7 @@ const loadProfiles = () => {
   return profiles;
 };
 
-export async function processCasts(casts: Cast[], client: Client) {
+export async function embedCasts(casts: Cast[]) {
   // Load profiles once for the batch
   const profiles = loadProfiles();
 

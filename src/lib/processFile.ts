@@ -2,7 +2,7 @@ import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { bucketName, getTableNameFromKey, IngestionType } from './s3';
-import { processCasts } from './embedCasts';
+import { processCastsFromStagingTable } from './processCasts';
 
 // Function to process a single file
 export async function processFile(key: string, type: IngestionType) {
@@ -54,37 +54,5 @@ async function runMigrationScripts(tableName: string, client: Client) {
     );
     await client.query(migrateScript);
     console.log(`Migration script executed for ${tableName}`);
-  }
-}
-
-// Function to process casts after migration
-async function processCastsFromStagingTable(
-  type: IngestionType,
-  client: Client
-) {
-  if (type === 'casts') {
-    const batchSize = 1000;
-    let offset = 0;
-    let hasMore = true;
-
-    while (hasMore) {
-      // Fetch data in batches
-      const res = await client.query(
-        'SELECT * FROM staging.farcaster_casts ORDER BY id LIMIT $1 OFFSET $2',
-        [batchSize, offset]
-      );
-
-      if (res.rows.length === 0) {
-        hasMore = false;
-        continue;
-      }
-
-      await processCasts(res.rows, client);
-      console.log(
-        `Successfully processed batch of ${res.rows.length} casts (offset: ${offset})`
-      );
-
-      offset += batchSize;
-    }
   }
 }
