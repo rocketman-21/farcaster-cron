@@ -8,6 +8,12 @@ const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
 const twentyFourHours = '0 0 */24 * *';
 
+const schedules: Record<string, { dev: string; prod: string }> = {
+  casts: { dev: fiveSeconds, prod: twoMinutes },
+  profiles: { dev: fiveSeconds, prod: twoMinutes },
+  downloadProfiles: { dev: fiveSeconds, prod: twentyFourHours },
+};
+
 const isProcessing: Record<string, boolean> = {
   casts: false,
   profiles: false,
@@ -20,8 +26,12 @@ const isEnabled: Record<string, boolean> = {
   downloadProfiles: false,
 };
 
+const getSchedule = (key: keyof typeof schedules) => {
+  return isDev ? schedules[key].dev : schedules[key].prod;
+};
+
 // Ingest casts from parquet files in S3
-cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
+cron.schedule(getSchedule('casts'), async () => {
   if (!isEnabled.casts) {
     return;
   }
@@ -35,7 +45,7 @@ cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
 });
 
 // Ingest profiles from parquet files in S3
-cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
+cron.schedule(getSchedule('profiles'), async () => {
   if (!isEnabled.profiles) {
     return;
   }
@@ -49,7 +59,7 @@ cron.schedule(isDev ? fiveSeconds : twoMinutes, async () => {
 });
 
 // Download profiles to CSV
-cron.schedule(isDev ? fiveSeconds : twentyFourHours, async () => {
+cron.schedule(getSchedule('downloadProfiles'), async () => {
   if (!isEnabled.downloadProfiles) {
     return;
   }
