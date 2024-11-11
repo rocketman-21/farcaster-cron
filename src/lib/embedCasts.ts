@@ -127,7 +127,7 @@ export async function embedCasts(casts: Cast[]) {
     payloads.push(payload);
   }
 
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 200;
   // Send payloads in batches
   for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
     const batch = payloads.slice(i, i + BATCH_SIZE);

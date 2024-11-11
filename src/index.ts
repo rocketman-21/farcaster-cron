@@ -22,7 +22,7 @@ const isProcessing: Record<string, boolean> = {
 };
 
 const isEnabled: Record<string, boolean> = {
-  casts: false,
+  casts: true,
   profiles: false,
   downloadProfiles: false,
 };

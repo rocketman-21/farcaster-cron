@@ -23,15 +23,36 @@ export async function processFile(key: string, type: IngestionType) {
 
   try {
     await client.connect();
-    await client.query(copyCommand);
-    console.log(`Successfully ingested file: ${key}`);
 
-    if (type === 'casts') {
-      await processCastsFromStagingTable(type, client);
+    // Retry logic for deadlocks
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const result = await client.query(copyCommand);
+        console.log(
+          `Successfully ingested ${result.rowCount} new rows from file: ${key}`
+        );
+
+        if (type === 'casts') {
+          await processCastsFromStagingTable(type, client);
+        }
+
+        // Run migration scripts if necessary
+        await runMigrationScripts(tableName, client);
+        break;
+      } catch (err: any) {
+        if (err.code === '40P01' && retries > 1) {
+          // Deadlock error code
+          console.log(
+            `Deadlock detected, retrying... (${retries - 1} attempts remaining)`
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
+          retries--;
+          continue;
+        }
+        throw err;
+      }
     }
-
-    // Run migration scripts if necessary
-    await runMigrationScripts(tableName, client);
   } catch (err) {
     console.error(`Error ingesting file ${key}:`, err);
   } finally {
