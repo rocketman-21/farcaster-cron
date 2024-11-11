@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 import { embedCasts } from '../lib/embedCasts';
-import fs from 'fs';
-import path from 'path';
+
+let lastProcessedId = 0;
 
 export async function backfillEmbed() {
   // Create a new PostgreSQL client
@@ -9,21 +9,16 @@ export async function backfillEmbed() {
     connectionString: process.env.DB_URL,
   });
 
-  const lastIdFile = path.resolve(
-    __dirname,
-    '../timestamps/last_processed_id.txt'
-  );
-  let lastProcessedId = 0;
-
-  // Read last processed ID if file exists
-  if (fs.existsSync(lastIdFile)) {
-    lastProcessedId = parseInt(fs.readFileSync(lastIdFile, 'utf-8'), 10);
-    console.log(`Resuming from ID: ${lastProcessedId}`);
-  }
-
   try {
     await client.connect();
 
+    // AND root_parent_url IN (
+    //   'https://warpcast.com/~/channel/vrbs',
+    //   'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
+    //   'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
+    //   'https://warpcast.com/~/channel/flows',
+    //   'https://warpcast.com/~/channel/yellow'
+    // )
     const batchSize = 500;
     const totalToProcess = 1e7;
     let totalProcessed = 0;
@@ -32,13 +27,7 @@ export async function backfillEmbed() {
       const res = await client.query(
         `SELECT * FROM production.farcaster_casts 
         WHERE id > $1 
-        AND root_parent_url IN (
-          'https://warpcast.com/~/channel/vrbs',
-          'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
-          'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
-          'https://warpcast.com/~/channel/flows',
-          'https://warpcast.com/~/channel/yellow'
-        )
+        AND root_parent_url = 'https://warpcast.com/~/channel/flows'
         ORDER BY id 
         LIMIT $2`,
         [lastProcessedId, batchSize]
@@ -53,8 +42,6 @@ export async function backfillEmbed() {
 
       // Update last processed ID
       lastProcessedId = res.rows[res.rows.length - 1].id;
-      fs.writeFileSync(lastIdFile, lastProcessedId.toString());
-
       console.log(
         `Successfully embedded batch of ${res.rows.length} casts (last ID: ${lastProcessedId})`
       );

@@ -121,7 +121,10 @@ export async function embedCasts(casts: Cast[]) {
     // Deduplicate arrays before pushing payload
     if (payload.tags) payload.tags = getUniqueValues(payload.tags);
     if (payload.users) payload.users = getUniqueValues(payload.users);
-    if (payload.urls) payload.urls = getUniqueValues(payload.urls);
+    if (payload.urls)
+      payload.urls = Array.from(
+        new Set(payload.urls.map((item) => item.toString()))
+      );
     if (payload.groups) payload.groups = getUniqueValues(payload.groups);
 
     payloads.push(payload);
