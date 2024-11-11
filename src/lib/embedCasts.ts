@@ -118,6 +118,11 @@ export async function embedCasts(casts: Cast[]) {
     if (cast.parent_url) {
       payload.groups.push(cast.parent_url);
     }
+    // Deduplicate arrays before pushing payload
+    payload.groups = [...new Set(payload.groups)];
+    payload.tags = [...new Set(payload.tags)];
+    payload.users = [...new Set(payload.users)];
+    payload.urls = [...new Set(payload.urls)];
     payloads.push(payload);
   }
 
