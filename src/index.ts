@@ -7,12 +7,12 @@ const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
 const tenMinutes = '*/10 * * * *';
-const sixHours = '0 0 */6 * *';
+const twoHours = '0 0 */2 * *';
 
 const schedules: Record<string, { dev: string; prod: string }> = {
   casts: { dev: fiveSeconds, prod: tenMinutes },
   profiles: { dev: fiveSeconds, prod: tenMinutes },
-  downloadProfiles: { dev: fiveSeconds, prod: sixHours },
+  downloadProfiles: { dev: fiveSeconds, prod: twoHours },
 };
 
 const isProcessing: Record<string, boolean> = {
@@ -23,8 +23,8 @@ const isProcessing: Record<string, boolean> = {
 
 const isEnabled: Record<string, boolean> = {
   casts: true,
-  profiles: false,
-  downloadProfiles: false,
+  profiles: true,
+  downloadProfiles: true,
 };
 
 const getSchedule = (key: keyof typeof schedules) => {
