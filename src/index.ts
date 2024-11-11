@@ -22,9 +22,9 @@ const isProcessing: Record<string, boolean> = {
 };
 
 const isEnabled: Record<string, boolean> = {
-  casts: true,
-  profiles: true,
-  downloadProfiles: true,
+  casts: false,
+  profiles: false,
+  downloadProfiles: false,
 };
 
 const getSchedule = (key: keyof typeof schedules) => {

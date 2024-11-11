@@ -6,8 +6,8 @@ import {
 } from './utils';
 import { prefixes } from '../lib/s3';
 
-// Set min time as 72 hours ago
-const minTime = Date.now() - 72 * 60 * 60 * 1000;
+// Set min time as 1 week ago
+const minTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
 export const profiles = async () => {
   const latestProcessedTimestamps = initializeTimestamps();

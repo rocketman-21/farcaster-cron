@@ -32,12 +32,12 @@ export async function backfillEmbed() {
       const res = await client.query(
         `SELECT * FROM production.farcaster_casts 
         WHERE id > $1 
-        AND (
-          root_parent_url = 'https://warpcast.com/~/channel/vrbs' 
-          OR root_parent_url = 'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03'
-          OR root_parent_url = 'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c'
-          OR root_parent_url = 'https://warpcast.com/~/channel/flows'
-          OR root_parent_url = 'https://warpcast.com/~/channel/yellow'
+        AND root_parent_url IN (
+          'https://warpcast.com/~/channel/vrbs',
+          'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
+          'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
+          'https://warpcast.com/~/channel/flows',
+          'https://warpcast.com/~/channel/yellow'
         )
         ORDER BY id 
         LIMIT $2`,
