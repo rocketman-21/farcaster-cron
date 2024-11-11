@@ -119,10 +119,11 @@ export async function embedCasts(casts: Cast[]) {
       payload.groups.push(cast.parent_url);
     }
     // Deduplicate arrays before pushing payload
-    payload.groups = [...new Set(payload.groups)];
-    payload.tags = [...new Set(payload.tags)];
-    payload.users = [...new Set(payload.users)];
-    payload.urls = [...new Set(payload.urls)];
+    if (payload.tags) payload.tags = getUniqueValues(payload.tags);
+    if (payload.users) payload.users = getUniqueValues(payload.users);
+    if (payload.urls) payload.urls = getUniqueValues(payload.urls);
+    if (payload.groups) payload.groups = getUniqueValues(payload.groups);
+
     payloads.push(payload);
   }
 
@@ -136,3 +137,8 @@ export async function embedCasts(casts: Cast[]) {
     );
   }
 }
+
+const getUniqueValues = (arr: string[]) => {
+  if (!arr || arr.length === 0) return [];
+  return Array.from(new Set(arr.map((item) => item.toString().toLowerCase())));
+};

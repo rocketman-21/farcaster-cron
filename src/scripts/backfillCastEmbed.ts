@@ -27,11 +27,20 @@ export async function backfillEmbed() {
     const batchSize = 500;
     const totalToProcess = 1e7;
     let totalProcessed = 0;
-
     while (totalProcessed < totalToProcess) {
       // Fetch data in batches using ID instead of offset
       const res = await client.query(
-        'SELECT * FROM production.farcaster_casts WHERE id > $1 ORDER BY id LIMIT $2',
+        `SELECT * FROM production.farcaster_casts 
+        WHERE id > $1 
+        AND (
+          root_parent_url = 'https://warpcast.com/~/channel/vrbs' 
+          OR root_parent_url = 'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03'
+          OR root_parent_url = 'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c'
+          OR root_parent_url = 'https://warpcast.com/~/channel/flows'
+          OR root_parent_url = 'https://warpcast.com/~/channel/yellow'
+        )
+        ORDER BY id 
+        LIMIT $2`,
         [lastProcessedId, batchSize]
       );
 
