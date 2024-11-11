@@ -68,6 +68,7 @@ export async function embedCasts(casts: Cast[]) {
       groups: [],
       tags: [],
       hashSuffix: cast.fid.toString(),
+      urls: [],
     };
 
     // Include the fid (user ID) and verified addresses in the users array
@@ -80,6 +81,11 @@ export async function embedCasts(casts: Cast[]) {
       for (const address of verifiedAddresses) {
         pushToUsers(payload.users, address, cast);
       }
+    }
+
+    if (cast.embeds?.length) {
+      const urls: { url: string }[] = JSON.parse(cast.embeds);
+      payload.urls = urls.map((url) => url.url).filter((url) => url);
     }
 
     // Parse mentions and add to tags array along with their verified addresses

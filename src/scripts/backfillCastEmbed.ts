@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { processCasts } from '../lib/embedCasts';
+import { embedCasts } from '../lib/embedCasts';
 import fs from 'fs';
 import path from 'path';
 
@@ -40,7 +40,7 @@ export async function backfillEmbed() {
         break;
       }
 
-      await processCasts(res.rows, client);
+      await embedCasts(res.rows);
 
       // Update last processed ID
       lastProcessedId = res.rows[res.rows.length - 1].id;

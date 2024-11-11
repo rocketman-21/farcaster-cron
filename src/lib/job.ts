@@ -8,6 +8,7 @@ export interface JobBody {
   tags: string[];
   externalId: string;
   hashSuffix?: string;
+  urls?: string[];
 }
 
 export const validTypes = [
