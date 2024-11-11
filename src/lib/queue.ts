@@ -18,20 +18,39 @@ const makeRequest = async (endpoint: string, body: any) => {
     'Cache-Control': 'no-store',
   };
 
-  const response = await fetch(process.env.EMBEDDINGS_QUEUE_URL + endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  let lastError;
+  const maxRetries = 3;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(
+        process.env.EMBEDDINGS_QUEUE_URL + endpoint,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        }
+      );
 
-  if (!response.ok) {
-    const text = await response.text();
-    console.error({ text });
-    console.error(`Failed request to ${endpoint}:`, text);
-    throw new Error((text as any)?.message || `Failed request to ${endpoint}`);
+      if (!response.ok) {
+        const text = await response.text();
+        console.error({ text });
+        console.error(`Failed request to ${endpoint}:`, text);
+        throw new Error(
+          (text as any)?.message || `Failed request to ${endpoint}`
+        );
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (i < maxRetries - 1) {
+        // Don't wait after the last attempt
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
   }
 
-  return response;
+  throw lastError;
 };
 
 export async function postToEmbeddingsQueueRequest(payload: JobBody) {
