@@ -18,9 +18,11 @@ export const prefixes: Record<IngestionType, string> = {
   profiles:
     'public-postgres/farcaster/v2/incremental/farcaster-profile_with_addresses',
   casts: 'public-postgres/farcaster/v2/incremental/farcaster-casts',
+  'channel-members':
+    'public-postgres/farcaster/v2/incremental/farcaster-channel_members',
 };
 
-export type IngestionType = 'profiles' | 'casts';
+export type IngestionType = 'profiles' | 'casts' | 'channel-members';
 
 // Function to extract the timestamp from the S3 key
 export function extractTimestampFromKey(key: string): number {

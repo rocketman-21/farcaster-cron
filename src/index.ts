@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { casts } from './crons/casts';
 import { profiles } from './crons/profiles';
 import { downloadProfiles } from './crons/download-profiles';
+import { channelMembers } from './crons/channel-members';
 
 const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
@@ -13,18 +14,21 @@ const schedules: Record<string, { dev: string; prod: string }> = {
   casts: { dev: fiveSeconds, prod: tenMinutes },
   profiles: { dev: fiveSeconds, prod: tenMinutes },
   downloadProfiles: { dev: fiveSeconds, prod: twoHours },
+  'channel-members': { dev: fiveSeconds, prod: tenMinutes },
 };
 
 const isProcessing: Record<string, boolean> = {
   casts: false,
   profiles: false,
   downloadProfiles: false,
+  'channel-members': false,
 };
 
 const isEnabled: Record<string, boolean> = {
   casts: true,
   profiles: true,
   downloadProfiles: true,
+  'channel-members': true,
 };
 
 const getSchedule = (key: keyof typeof schedules) => {
@@ -71,4 +75,18 @@ cron.schedule(getSchedule('downloadProfiles'), async () => {
   isProcessing.downloadProfiles = true;
   await downloadProfiles();
   isProcessing.downloadProfiles = false;
+});
+
+// Ingest channel members from parquet files in S3
+cron.schedule(getSchedule('channel-members'), async () => {
+  if (!isEnabled['channel-members']) {
+    return;
+  }
+  if (isProcessing['channel-members']) {
+    console.log('Already processing channel members, skipping...');
+    return;
+  }
+  isProcessing['channel-members'] = true;
+  await channelMembers();
+  isProcessing['channel-members'] = false;
 });

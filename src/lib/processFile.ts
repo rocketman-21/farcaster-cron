@@ -65,6 +65,7 @@ async function runMigrationScripts(tableName: string, client: Client) {
   const migrations: Record<string, string> = {
     farcaster_profile_with_addresses: 'migrate_profiles.sql',
     farcaster_casts: 'migrate_casts.sql',
+    farcaster_channel_members: 'migrate_channel_members.sql',
   };
 
   const migrationFile = migrations[tableName];
