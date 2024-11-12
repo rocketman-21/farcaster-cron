@@ -35,6 +35,7 @@ export async function processCastsFromStagingTable(
       // Fetch data in batches
       const res = await client.query(
         `SELECT * FROM staging.farcaster_casts 
+         WHERE parent_hash IS NULL
          ORDER BY id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
@@ -55,10 +56,6 @@ export async function processCastsFromStagingTable(
           'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
           'https://warpcast.com/~/channel/flows',
         ];
-
-        // if (nounishFids.has(fid)) {
-        //   console.log(`Nounish citizen: ${fid}`);
-        // }
 
         // Include cast if either URL matches or author is a nounish citizen
         return validUrls.includes(row.root_parent_url) || nounishFids.has(fid);
