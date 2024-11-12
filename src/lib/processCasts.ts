@@ -15,7 +15,15 @@ export async function processCastsFromStagingTable(
     while (hasMore) {
       // Fetch data in batches
       const res = await client.query(
-        'SELECT * FROM staging.farcaster_casts ORDER BY id LIMIT $1 OFFSET $2',
+        `SELECT * FROM staging.farcaster_casts 
+         WHERE root_parent_url IN (
+           'https://warpcast.com/~/channel/vrbs',
+           'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
+           'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
+           'https://warpcast.com/~/channel/flows',
+           'https://warpcast.com/~/channel/yellow'
+         )
+         ORDER BY id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
 
