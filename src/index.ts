@@ -29,10 +29,10 @@ const isProcessing: Record<string, boolean> = {
 
 const isEnabled: Record<string, boolean> = {
   casts: true,
-  profiles: false,
-  downloadProfiles: false,
-  'channel-members': false,
-  downloadNounishCitizens: false,
+  profiles: true,
+  downloadProfiles: true,
+  'channel-members': true,
+  downloadNounishCitizens: true,
 };
 
 const getSchedule = (key: keyof typeof schedules) => {

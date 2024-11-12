@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { bucketName, getTableNameFromKey, IngestionType } from './s3';
 import { processCastsFromStagingTable } from './processCasts';
+import { processMembersFromStagingTable } from './processMembers';
 
 // Function to process a single file
 export async function processFile(key: string, type: IngestionType) {
@@ -35,6 +36,8 @@ export async function processFile(key: string, type: IngestionType) {
 
         if (type === 'casts') {
           await processCastsFromStagingTable(type, client);
+        } else if (type === 'channel-members') {
+          await processMembersFromStagingTable(type, client);
         }
 
         // Run migration scripts if necessary

@@ -3,27 +3,9 @@ import path from 'path';
 import { JobBody } from './job';
 import { postBulkToEmbeddingsQueueRequest } from './queue';
 import { cleanTextForEmbedding } from './embed';
+import { FarcasterCast } from '../types/types';
 
-export interface Cast {
-  id: bigint;
-  created_at: Date;
-  updated_at: Date;
-  deleted_at: Date | null;
-  timestamp: Date;
-  fid: bigint;
-  hash: Buffer;
-  parent_hash: Buffer | null;
-  parent_fid: bigint | null;
-  parent_url: string | null;
-  text: string;
-  embeds: string | null;
-  mentions: string | null;
-  mentions_positions: string | null;
-  root_parent_hash: Buffer | null;
-  root_parent_url: string | null;
-}
-
-function pushToUsers(users: string[], value: string, cast: Cast) {
+function pushToUsers(users: string[], value: string) {
   // Only validate length for ETH addresses (starting with 0x)
   if (value.startsWith('0x') && value.length !== 42) {
     return;
@@ -50,7 +32,7 @@ const loadProfiles = () => {
   return profiles;
 };
 
-export async function embedCasts(casts: Cast[]) {
+export async function embedCasts(casts: FarcasterCast[]) {
   // Load profiles once for the batch
   const profiles = loadProfiles();
 
@@ -79,7 +61,7 @@ export async function embedCasts(casts: Cast[]) {
       // Get verified addresses from profiles map
       const verifiedAddresses = profiles.get(fid) || [];
       for (const address of verifiedAddresses) {
-        pushToUsers(payload.users, address, cast);
+        pushToUsers(payload.users, address);
       }
     }
 

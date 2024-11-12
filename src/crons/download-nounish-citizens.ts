@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
+import { ChannelMember, FarcasterProfile } from '../types/types';
 
 const downloadNounishCitizens = async () => {
   // Create a new PostgreSQL client
@@ -40,7 +41,9 @@ const downloadNounishCitizens = async () => {
 
     console.log('Starting nounish citizens download...');
     while (hasMore) {
-      const result = await client.query(
+      const result = await client.query<
+        ChannelMember & Pick<FarcasterProfile, 'fname'>
+      >(
         `SELECT DISTINCT cm.fid, p.fname, cm.channel_id
          FROM production.farcaster_channel_members cm
          LEFT JOIN production.farcaster_profile p ON cm.fid = p.fid

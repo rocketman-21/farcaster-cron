@@ -4,12 +4,7 @@ import { embedCasts } from './embedCasts';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
-
-interface NounishCitizen {
-  fid: string;
-  fname: string;
-  channel_id: string;
-}
+import { NounishCitizen, FarcasterCast } from '../types/types';
 
 // Function to process casts after migration
 export async function processCastsFromStagingTable(
@@ -33,7 +28,7 @@ export async function processCastsFromStagingTable(
     let hasMore = true;
     while (hasMore) {
       // Fetch data in batches
-      const res = await client.query(
+      const res = await client.query<FarcasterCast>(
         `SELECT * FROM staging.farcaster_casts 
          WHERE parent_hash IS NULL
          ORDER BY id LIMIT $1 OFFSET $2`,
@@ -56,9 +51,13 @@ export async function processCastsFromStagingTable(
           'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
           'https://warpcast.com/~/channel/flows',
         ];
+        const rootParentUrl = row.root_parent_url;
 
         // Include cast if either URL matches or author is a nounish citizen
-        return validUrls.includes(row.root_parent_url) || nounishFids.has(fid);
+        return (
+          (rootParentUrl && validUrls.includes(rootParentUrl)) ||
+          nounishFids.has(fid)
+        );
       });
 
       if (filteredRows.length === 0) {

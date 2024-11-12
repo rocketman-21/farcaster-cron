@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
+import { FarcasterProfile } from '../types/types';
 
 const downloadProfiles = async () => {
   // Create a new PostgreSQL client
@@ -30,7 +31,9 @@ const downloadProfiles = async () => {
     console.log('Starting profile download...');
 
     while (hasMore) {
-      const result = await client.query(
+      const result = await client.query<
+        Pick<FarcasterProfile, 'fid' | 'fname' | 'verified_addresses'>
+      >(
         `SELECT fid, fname, verified_addresses 
          FROM production.farcaster_profile 
          ORDER BY fid 
