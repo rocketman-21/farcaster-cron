@@ -71,20 +71,6 @@ cron.schedule(getSchedule('profiles'), async () => {
   isProcessing.profiles = false;
 });
 
-// Download profiles to CSV
-cron.schedule(getSchedule('downloadProfiles'), async () => {
-  if (!isEnabled.downloadProfiles) {
-    return;
-  }
-  if (isProcessing.downloadProfiles) {
-    console.log('Already downloading profiles, skipping...');
-    return;
-  }
-  isProcessing.downloadProfiles = true;
-  await downloadProfiles();
-  isProcessing.downloadProfiles = false;
-});
-
 // Ingest channel members from parquet files in S3
 cron.schedule(getSchedule('channel-members'), async () => {
   if (!isEnabled['channel-members']) {
@@ -125,4 +111,18 @@ cron.schedule(getSchedule('downloadGrants'), async () => {
   isProcessing.downloadGrants = true;
   await downloadGrants();
   isProcessing.downloadGrants = false;
+});
+
+// Download profiles to CSV
+cron.schedule(getSchedule('downloadProfiles'), async () => {
+  if (!isEnabled.downloadProfiles) {
+    return;
+  }
+  if (isProcessing.downloadProfiles) {
+    console.log('Already downloading profiles, skipping...');
+    return;
+  }
+  isProcessing.downloadProfiles = true;
+  await downloadProfiles();
+  isProcessing.downloadProfiles = false;
 });
