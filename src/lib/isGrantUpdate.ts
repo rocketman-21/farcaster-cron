@@ -2,6 +2,7 @@ import { IsGrantUpdateJobBody } from './job';
 import { postBulkIsGrantsUpdateRequest } from './queue';
 import { FarcasterCast, Grant } from '../types/types';
 import { cleanTextForEmbedding } from './embed';
+import { getCastEmbedUrls } from './getCastEmbedUrls';
 
 export async function checkGrantUpdates(
   casts: (FarcasterCast & { grantIds: string[] })[],
@@ -34,9 +35,7 @@ export async function checkGrantUpdates(
         ),
         castHash: `0x${cast.hash.toString('hex')}`,
         grantId: grant.id,
-        urls: cast.embeds?.length
-          ? JSON.parse(cast.embeds).map((url: { url: string }) => url.url)
-          : [],
+        urls: getCastEmbedUrls(cast.embeds),
       };
 
       payloads.push(payload);

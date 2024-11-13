@@ -5,6 +5,7 @@ import { postBulkToEmbeddingsQueueRequest } from './queue';
 import { cleanTextForEmbedding } from './embed';
 import { FarcasterCast } from '../types/types';
 import { getFidToVerifiedAddresses } from './download-csvs';
+import { getCastEmbedUrls } from './getCastEmbedUrls';
 
 function pushToUsers(users: string[], value: string) {
   // Only validate length for ETH addresses (starting with 0x)
@@ -48,10 +49,7 @@ export async function embedCasts(casts: FarcasterCast[]) {
       }
     }
 
-    if (cast.embeds?.length) {
-      const urls: { url: string }[] = JSON.parse(cast.embeds);
-      payload.urls = urls.map((url) => url.url).filter((url) => url);
-    }
+    payload.urls = getCastEmbedUrls(cast.embeds);
 
     // Parse mentions and add to tags array along with their verified addresses
     if (cast.mentions) {

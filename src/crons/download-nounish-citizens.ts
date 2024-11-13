@@ -2,6 +2,9 @@ import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 import { ChannelMember, FarcasterProfile } from '../types/types';
+import { Writable } from 'stream';
+import CSV from 'fast-csv';
+import QueryStream from 'pg-query-stream';
 
 const downloadNounishCitizens = async () => {
   // Create a new PostgreSQL client
@@ -9,24 +12,27 @@ const downloadNounishCitizens = async () => {
     connectionString: process.env.DB_URL,
   });
 
+  // Create output directory if it doesn't exist
+  const outputDir = path.resolve(__dirname, '../data');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+  const outputFile = path.resolve(outputDir, 'nounish-citizens.csv');
+
   try {
     await client.connect();
 
-    // Create output directory if it doesn't exist
-    const outputDir = path.resolve(__dirname, '../data');
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    const tmpFile = `${outputFile}.tmp`;
 
-    const outputFile = path.resolve(outputDir, 'nounish-citizens.csv');
-    const writeStream = fs.createWriteStream(outputFile);
+    const writeStream = fs.createWriteStream(tmpFile);
 
-    // Write CSV header
-    writeStream.write('fid,fname,channel_id\n');
+    // Create a CSV formatter
+    const csvStream = CSV.format({
+      headers: ['fid', 'fname', 'channel_id'],
+    });
+    csvStream.pipe(writeStream);
 
-    const batchSize = 10000;
-    let offset = 0;
-    let hasMore = true;
+    console.log('Starting nounish citizens download...');
 
     const channels = [
       'vrbs',
@@ -39,42 +45,65 @@ const downloadNounishCitizens = async () => {
       'nouns-retro',
     ];
 
-    console.log('Starting nounish citizens download...');
-    while (hasMore) {
-      const result = await client.query<
-        ChannelMember & Pick<FarcasterProfile, 'fname'>
-      >(
-        `SELECT DISTINCT cm.fid, p.fname, cm.channel_id
-         FROM production.farcaster_channel_members cm
-         LEFT JOIN production.farcaster_profile p ON cm.fid = p.fid
-         WHERE cm.channel_id = ANY($1)
-         AND cm.deleted_at IS NULL
-         ORDER BY cm.fid 
-         LIMIT $2 OFFSET $3`,
-        [channels, batchSize, offset]
-      );
+    // Create a query stream
+    const query = new QueryStream(
+      `SELECT DISTINCT cm.fid, p.fname, cm.channel_id
+       FROM production.farcaster_channel_members cm
+       LEFT JOIN production.farcaster_profile p ON cm.fid = p.fid
+       WHERE cm.channel_id = ANY($1)
+       AND cm.deleted_at IS NULL`,
+      [channels],
+      { highWaterMark: 10000 }
+    );
+    const dbStream = client.query(query);
 
-      if (result.rows.length === 0) {
-        hasMore = false;
-        console.log('No more nounish citizens to download');
-        continue;
-      }
+    // Keep track of number of citizens
+    let citizenCount = 0;
 
-      // Process each row and write to CSV
-      result.rows.forEach((row) => {
-        writeStream.write(`${row.fid},${row.fname || ''},${row.channel_id}\n`);
-      });
+    // Pipe database rows to CSV
+    const processStream = new Writable({
+      objectMode: true,
+      write(
+        row: ChannelMember & Pick<FarcasterProfile, 'fname'>,
+        encoding,
+        callback
+      ) {
+        csvStream.write({
+          fid: row.fid,
+          fname: row.fname || '',
+          channel_id: row.channel_id,
+        });
+        citizenCount++;
+        callback();
+      },
+    });
 
-      console.log(`Processed ${offset + result.rows.length} citizens`);
-      offset += batchSize;
-    }
+    dbStream.pipe(processStream);
 
-    writeStream.end();
+    // Wait for the stream to finish
+    await new Promise<void>((resolve, reject) => {
+      processStream.on('finish', resolve);
+      processStream.on('error', reject);
+      dbStream.on('error', reject);
+    });
+
+    csvStream.end();
+
+    // Wait for write stream to finish before renaming
+    await new Promise<void>((resolve) => writeStream.on('finish', resolve));
+
+    // Atomically rename tmp file to final filename
+    fs.renameSync(tmpFile, outputFile);
+
     console.log(
-      `Nounish citizens download complete. File saved to: ${outputFile}`
+      `Nounish citizens download complete. ${citizenCount} citizens streamed. File saved to: ${outputFile}`
     );
   } catch (err) {
     console.error('Error downloading nounish citizens:', err);
+    // Clean up tmp file if it exists
+    if (fs.existsSync(`${outputFile}.tmp`)) {
+      fs.unlinkSync(`${outputFile}.tmp`);
+    }
   } finally {
     await client.end();
   }
