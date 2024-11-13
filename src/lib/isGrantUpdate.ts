@@ -38,7 +38,15 @@ export async function checkGrantUpdates(
         urls: getCastEmbedUrls(cast.embeds),
       };
 
-      payloads.push(payload);
+      if (payload.castContent || payload.urls.length > 0) {
+        payloads.push(payload);
+      } else {
+        console.log(
+          `Skipping cast ${cast.id} because it has no content or urls`,
+          cast,
+          payload
+        );
+      }
     }
   }
 
