@@ -7,7 +7,16 @@ import CSV from 'fast-csv';
 import QueryStream from 'pg-query-stream';
 import { finished } from 'stream/promises';
 
+let isDownloadingNounishCitizens = false;
+
 const downloadNounishCitizens = async () => {
+  if (isDownloadingNounishCitizens) {
+    console.log('Nounish citizens download is already in progress.');
+    return;
+  }
+
+  isDownloadingNounishCitizens = true;
+
   // Create a new PostgreSQL client
   const client = new Client({
     connectionString: process.env.DB_URL,
@@ -107,6 +116,8 @@ const downloadNounishCitizens = async () => {
     }
   } finally {
     await client.end();
+    isDownloadingNounishCitizens = false;
+    console.log('Database connection closed.');
   }
 };
 

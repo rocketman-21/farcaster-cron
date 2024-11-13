@@ -7,7 +7,16 @@ import CSV from 'fast-csv';
 import QueryStream from 'pg-query-stream';
 import { finished } from 'stream/promises';
 
+let isDownloadingProfiles = false;
+
 const downloadProfiles = async () => {
+  if (isDownloadingProfiles) {
+    console.log('Profile download is already in progress.');
+    return;
+  }
+
+  isDownloadingProfiles = true;
+
   // Create a new PostgreSQL client
   const client = new Client({
     connectionString: process.env.DB_URL,
@@ -112,6 +121,7 @@ const downloadProfiles = async () => {
     }
   } finally {
     await client.end();
+    isDownloadingProfiles = false;
     console.log('Database connection closed.');
   }
 };
