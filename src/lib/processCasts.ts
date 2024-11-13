@@ -49,6 +49,7 @@ export async function processCastsFromStagingTable(
     while (hasMore) {
       const res = await client.query<FarcasterCast>(
         `SELECT * FROM staging.farcaster_casts 
+         WHERE parent_hash IS NULL
          ORDER BY id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
