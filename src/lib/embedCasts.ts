@@ -4,6 +4,7 @@ import { JobBody } from './job';
 import { postBulkToEmbeddingsQueueRequest } from './queue';
 import { cleanTextForEmbedding } from './embed';
 import { FarcasterCast } from '../types/types';
+import { getFidToVerifiedAddresses } from './download-csvs';
 
 function pushToUsers(users: string[], value: string) {
   // Only validate length for ETH addresses (starting with 0x)
@@ -14,27 +15,9 @@ function pushToUsers(users: string[], value: string) {
   users.push(value);
 }
 
-// Load profiles from CSV
-const loadProfiles = () => {
-  const profilesPath = path.resolve(__dirname, '../data/profiles.csv');
-  const profiles = new Map<string, string[]>();
-
-  const lines = fs.readFileSync(profilesPath, 'utf-8').split('\n');
-  // Skip header
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const [fid, _, addresses] = line.split(',');
-    profiles.set(fid, addresses ? addresses.split('|') : []);
-  }
-
-  return profiles;
-};
-
 export async function embedCasts(casts: FarcasterCast[]) {
   // Load profiles once for the batch
-  const profiles = loadProfiles();
+  const profiles = getFidToVerifiedAddresses();
 
   const payloads: JobBody[] = [];
 

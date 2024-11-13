@@ -42,3 +42,52 @@ export interface FarcasterCast {
   root_parent_hash: Buffer | null;
   root_parent_url: string | null;
 }
+
+export interface Grant {
+  id: string;
+  recipient: string;
+  flowId: string;
+  submitter: string;
+  parentContract: string;
+  isTopLevel: number;
+  isFlow: number;
+  title: string;
+  description: string;
+  image: string;
+  tagline?: string;
+  url?: string;
+  isRemoved: number;
+  isActive: number;
+  votesCount: string;
+  monthlyIncomingFlowRate: string;
+  monthlyIncomingBaselineFlowRate: string;
+  monthlyIncomingBonusFlowRate: string;
+  monthlyOutgoingFlowRate: string;
+  monthlyRewardPoolFlowRate: string;
+  monthlyBaselinePoolFlowRate: string;
+  monthlyBonusPoolFlowRate: string;
+  bonusMemberUnits: string;
+  baselineMemberUnits: string;
+  totalEarned: string;
+  activeRecipientCount: number;
+  awaitingRecipientCount: number;
+  challengedRecipientCount: number;
+  tcr: string;
+  erc20: string;
+  arbitrator: string;
+  tokenEmitter: string;
+  status: number;
+  challengePeriodEndsAt: number;
+  isDisputed: number;
+  isResolved: number;
+  evidenceGroupID: string;
+  createdAt: number;
+  updatedAt: number;
+  baselinePool: string;
+  bonusPool: string;
+  managerRewardPool: string;
+  superToken: string;
+  managerRewardSuperfluidPool: string;
+  managerRewardPoolFlowRatePercent: number;
+  baselinePoolFlowRatePercent: number;
+}

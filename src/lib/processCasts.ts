@@ -4,7 +4,27 @@ import { embedCasts } from './embedCasts';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
-import { NounishCitizen, FarcasterCast } from '../types/types';
+import { NounishCitizen, FarcasterCast, Grant } from '../types/types';
+import { checkGrantUpdates } from './isGrantUpdate';
+import { getFidToVerifiedAddresses } from './download-csvs';
+import { getGrants } from './download-csvs';
+
+// Helper function to check if root parent URL is valid
+const isValidRootParentUrl = (rootParentUrl: string | null) => {
+  const validUrls = [
+    'https://warpcast.com/~/channel/vrbs',
+    'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
+    'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
+    'https://warpcast.com/~/channel/flows',
+  ];
+  return !!(rootParentUrl && validUrls.includes(rootParentUrl));
+};
+
+// Filter function for casts
+const filterCasts = (row: FarcasterCast, nounishFids: Set<number>) => {
+  const fid = Number(row.fid);
+  return isValidRootParentUrl(row.root_parent_url) || nounishFids.has(fid);
+};
 
 // Function to process casts after migration
 export async function processCastsFromStagingTable(
@@ -27,50 +47,99 @@ export async function processCastsFromStagingTable(
     let offset = 0;
     let hasMore = true;
     while (hasMore) {
-      // Fetch data in batches
       const res = await client.query<FarcasterCast>(
         `SELECT * FROM staging.farcaster_casts 
-         WHERE parent_hash IS NULL
          ORDER BY id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
 
-      if (res.rows.length === 0) {
-        hasMore = false;
-        continue;
-      }
+      const rows = res.rows;
+      hasMore = rows.length > 0;
 
-      console.log(`Processing batch of ${res.rows.length} casts`);
-
-      // Filter rows in TypeScript
-      const filteredRows = res.rows.filter((row) => {
-        const fid = Number(row.fid);
-        const validUrls = [
-          'https://warpcast.com/~/channel/vrbs',
-          'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
-          'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
-          'https://warpcast.com/~/channel/flows',
-        ];
-        const rootParentUrl = row.root_parent_url;
-
-        // Include cast if either URL matches or author is a nounish citizen
-        return (
-          (rootParentUrl && validUrls.includes(rootParentUrl)) ||
-          nounishFids.has(fid)
-        );
-      });
-
-      if (filteredRows.length === 0) {
+      if (rows.length === 0) {
         offset += batchSize;
         continue;
       }
 
-      await embedCasts(filteredRows);
-      console.log(
-        `Successfully embedded batch of ${filteredRows.length} casts (offset: ${offset}, non-filtered: ${res.rows.length})`
-      );
+      const filteredRows = rows.filter((row) => filterCasts(row, nounishFids));
+
+      if (filteredRows.length > 0) {
+        await embedCasts(filteredRows);
+        console.log(
+          `Successfully embedded batch of ${filteredRows.length} casts (offset: ${offset}, non-filtered: ${rows.length})`
+        );
+      }
+
+      const filteredRowsWithGrantData = getFilteredRowsWithGrantData(rows);
+
+      if (filteredRowsWithGrantData.length > 0) {
+        await checkGrantUpdates(filteredRowsWithGrantData, getGrants());
+        console.log(
+          `Successfully checked grant updates for batch of ${filteredRowsWithGrantData.length} casts (offset: ${offset})`
+        );
+      }
 
       offset += batchSize;
     }
   }
+}
+
+function getFilteredRowsWithGrantData(
+  rows: FarcasterCast[]
+): (FarcasterCast & { grantIds: string[] })[] {
+  const grants = getGrants();
+  const profiles = getFidToVerifiedAddresses();
+
+  return rows
+    .map((row) => {
+      const result = filterGrantRecipients(row, profiles, grants);
+      if (!result.isValid) return null;
+      return {
+        ...row,
+        grantIds: result.grantIds,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+}
+
+function filterGrantRecipients(
+  cast: FarcasterCast,
+  profiles: Map<string, string[]>,
+  grants: Grant[]
+): { isValid: boolean; grantIds: string[] } {
+  // Get profile for this cast's FID
+  const verifiedAddresses = profiles.get(cast.fid.toString());
+
+  if (!verifiedAddresses) {
+    throw new Error(`No profile found for FID ${cast.fid}`);
+  }
+
+  if (
+    !verifiedAddresses ||
+    verifiedAddresses.length === 0 ||
+    !isValidRootParentUrl(cast.root_parent_url)
+  ) {
+    return { isValid: false, grantIds: [] };
+  }
+
+  // Handle case where verified_addresses is a string instead of array
+  const addresses = Array.isArray(verifiedAddresses)
+    ? verifiedAddresses
+    : [verifiedAddresses];
+
+  // Find all matching grants for this profile's addresses
+  const matchingGrants = grants.filter((grant) =>
+    addresses.some(
+      (address) => address.toLowerCase() === grant.recipient.toLowerCase()
+    )
+  );
+
+  if (matchingGrants.length === 0) {
+    return { isValid: false, grantIds: [] };
+  }
+
+  return {
+    isValid: true,
+    grantIds: matchingGrants.map((g) => g.id),
+  };
 }

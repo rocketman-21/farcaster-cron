@@ -4,6 +4,7 @@ import { profiles } from './crons/profiles';
 import { downloadProfiles } from './crons/download-profiles';
 import { channelMembers } from './crons/channel-members';
 import { downloadNounishCitizens } from './crons/download-nounish-citizens';
+import { downloadGrants } from './crons/download-grants';
 
 const isDev = process.env.NODE_ENV === 'development';
 const fiveSeconds = '*/5 * * * * *';
@@ -17,6 +18,7 @@ const schedules: Record<string, { dev: string; prod: string }> = {
   downloadProfiles: { dev: fiveSeconds, prod: twoHours },
   'channel-members': { dev: fiveSeconds, prod: tenMinutes },
   downloadNounishCitizens: { dev: fiveSeconds, prod: twoHours },
+  downloadGrants: { dev: fiveSeconds, prod: twoHours },
 };
 
 const isProcessing: Record<string, boolean> = {
@@ -25,6 +27,7 @@ const isProcessing: Record<string, boolean> = {
   downloadProfiles: false,
   'channel-members': false,
   downloadNounishCitizens: false,
+  downloadGrants: false,
 };
 
 const isEnabled: Record<string, boolean> = {
@@ -33,6 +36,7 @@ const isEnabled: Record<string, boolean> = {
   downloadProfiles: true,
   'channel-members': true,
   downloadNounishCitizens: true,
+  downloadGrants: true,
 };
 
 const getSchedule = (key: keyof typeof schedules) => {
@@ -107,4 +111,18 @@ cron.schedule(getSchedule('downloadNounishCitizens'), async () => {
   isProcessing.downloadNounishCitizens = true;
   await downloadNounishCitizens();
   isProcessing.downloadNounishCitizens = false;
+});
+
+// Download grants to CSV
+cron.schedule(getSchedule('downloadGrants'), async () => {
+  if (!isEnabled.downloadGrants) {
+    return;
+  }
+  if (isProcessing.downloadGrants) {
+    console.log('Already downloading grants, skipping...');
+    return;
+  }
+  isProcessing.downloadGrants = true;
+  await downloadGrants();
+  isProcessing.downloadGrants = false;
 });

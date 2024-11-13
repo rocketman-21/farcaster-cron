@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import { embedCasts } from '../lib/embedCasts';
-import { ensureDataFilesExist } from '../lib/download-builders';
+import { ensureDataFilesExist } from '../lib/download-csvs';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';

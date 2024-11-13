@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
     mentions TEXT,
     mentions_positions TEXT,
     root_parent_hash BYTEA,
-    root_parent_url TEXT
+    root_parent_url TEXT,
+    computed_tags TEXT[]
 );
 
 -- -- Create index on root_parent_hash
@@ -28,6 +29,10 @@ ON production.farcaster_casts (root_parent_hash);
 -- -- Create index on hash
 CREATE INDEX IF NOT EXISTS idx_production_cast_hash
 ON production.farcaster_casts (hash);
+
+-- -- Create index on computed_tags
+CREATE INDEX IF NOT EXISTS idx_production_cast_computed_tags
+ON production.farcaster_casts USING GIN (computed_tags);
 
 -- -- Create index on fid
 CREATE INDEX IF NOT EXISTS idx_production_cast_fid
@@ -148,13 +153,6 @@ BEGIN
         WHERE
             id > last_id 
             AND id <= current_max_id
-            -- AND root_parent_url IN (
-            --     'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
-            --     'https://warpcast.com/~/channel/vrbs',
-            --     'https://warpcast.com/~/channel/flows',
-            --     'https://warpcast.com/~/channel/yellow',
-            --     'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c'
-            -- )
         ORDER BY
             id
         ON CONFLICT (id) DO UPDATE SET

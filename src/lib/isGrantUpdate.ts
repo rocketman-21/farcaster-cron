@@ -1,0 +1,55 @@
+import { IsGrantUpdateJobBody } from './job';
+import { postBulkIsGrantsUpdateRequest } from './queue';
+import { FarcasterCast, Grant } from '../types/types';
+import { cleanTextForEmbedding } from './embed';
+
+export async function checkGrantUpdates(
+  casts: (FarcasterCast & { grantIds: string[] })[],
+  grants: Grant[]
+) {
+  const payloads: IsGrantUpdateJobBody[] = [];
+
+  for (const cast of casts) {
+    // Use the ordered arrays of grantIds and parentContracts
+    for (let i = 0; i < cast.grantIds.length; i++) {
+      const grantId = cast.grantIds[i];
+
+      // Find matching grant
+      const grant = grants.find((g) => g.id === grantId);
+      if (!grant) {
+        console.error(`No grant found for id ${grantId}`);
+        continue;
+      }
+
+      // Find parent grant where contract matches recipient
+      const parentGrant = grants.find(
+        (g) => g.recipient.toLowerCase() === grant.parentContract.toLowerCase()
+      );
+
+      const payload: IsGrantUpdateJobBody = {
+        castContent: cleanTextForEmbedding(cast.text),
+        grantDescription: cleanTextForEmbedding(grant.description || ''),
+        parentFlowDescription: cleanTextForEmbedding(
+          parentGrant?.description || ''
+        ),
+        castHash: `0x${cast.hash.toString('hex')}`,
+        grantId: grant.id,
+        urls: cast.embeds?.length
+          ? JSON.parse(cast.embeds).map((url: { url: string }) => url.url)
+          : [],
+      };
+
+      payloads.push(payload);
+    }
+  }
+
+  const BATCH_SIZE = 50;
+  // Send payloads in batches
+  for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
+    const batch = payloads.slice(i, i + BATCH_SIZE);
+    await postBulkIsGrantsUpdateRequest(batch);
+    console.log(
+      `Successfully called embeddings queue for batch of ${batch.length} grant update checks (offset: ${i})`
+    );
+  }
+}

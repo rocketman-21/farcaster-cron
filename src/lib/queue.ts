@@ -1,4 +1,4 @@
-import { EmbeddingType, JobBody } from './job';
+import { EmbeddingType, IsGrantUpdateJobBody, JobBody } from './job';
 
 const validateEnvVars = () => {
   if (!process.env.EMBEDDINGS_QUEUE_URL) {
@@ -75,4 +75,10 @@ export async function deleteEmbeddingRequest(
   type: EmbeddingType
 ) {
   await makeRequest('/delete-embedding', { contentHash, type });
+}
+
+export async function postBulkIsGrantsUpdateRequest(
+  payloads: IsGrantUpdateJobBody[]
+) {
+  await makeRequest('/bulk-add-is-grants-update', { jobs: payloads });
 }
