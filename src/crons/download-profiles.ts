@@ -5,6 +5,7 @@ import { FarcasterProfile } from '../types/types';
 import { Writable } from 'stream';
 import CSV from 'fast-csv';
 import QueryStream from 'pg-query-stream';
+import { finished } from 'stream/promises';
 
 const downloadProfiles = async () => {
   // Create a new PostgreSQL client
@@ -65,18 +66,18 @@ const downloadProfiles = async () => {
     dbStream.pipe(processStream);
 
     // Wait for the stream to finish
-    await new Promise<void>((resolve, reject) => {
-      processStream.on('finish', resolve);
-      processStream.on('error', reject);
-      dbStream.on('error', reject);
-    });
+    await finished(processStream);
 
+    // End the CSV stream
     csvStream.end();
 
-    // Wait for write stream to finish before renaming
-    await new Promise<void>((resolve) => writeStream.on('finish', resolve));
+    // Wait for the CSV stream to finish writing
+    await finished(csvStream);
 
-    // Atomically rename tmp file to final filename
+    // Wait for the write stream to finish
+    await finished(writeStream);
+
+    // Rename the temporary file to the final output file
     fs.renameSync(tmpFile, outputFile);
 
     console.log(
