@@ -111,7 +111,7 @@ function filterGrantRecipients(
   const verifiedAddresses = profiles.get(cast.fid.toString());
 
   if (!verifiedAddresses) {
-    throw new Error(`No profile found for FID ${cast.fid}`);
+    console.error(`No profile found for FID ${cast.fid}`);
   }
 
   if (
