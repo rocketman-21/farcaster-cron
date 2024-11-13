@@ -46,7 +46,16 @@ export const getFidToVerifiedAddresses = () => {
     if (!line) continue;
 
     const [fid, _, addresses] = line.split(',');
-    profiles.set(fid, addresses ? addresses.split('|') : []);
+    if (addresses) {
+      // Remove quotes and trim whitespace from addresses
+      const cleanAddresses = addresses
+        .split('|')
+        .map((addr) => addr.replace(/"/g, '').trim())
+        .filter((addr) => addr.length > 0);
+      profiles.set(fid, cleanAddresses);
+    } else {
+      profiles.set(fid, []);
+    }
   }
 
   return profiles;

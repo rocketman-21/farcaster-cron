@@ -43,8 +43,7 @@ export async function checkGrantUpdates(
       } else {
         console.log(
           `Skipping cast ${cast.id} because it has no content or urls`,
-          cast,
-          payload
+          cast
         );
       }
     }

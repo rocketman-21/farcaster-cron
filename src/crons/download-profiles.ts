@@ -77,7 +77,9 @@ const downloadProfiles = async (): Promise<void> => {
         objectMode: true,
         write(row: FarcasterProfile, encoding, callback) {
           const addresses = Array.isArray(row.verified_addresses)
-            ? row.verified_addresses.join('|')
+            ? row.verified_addresses
+                .map((addr) => addr.replace(/"/g, ''))
+                .join('|')
             : '';
           csvStream.write({
             fid: row.fid,
