@@ -6,6 +6,7 @@ import { parse } from 'csv-parse/sync';
 import { backfillCastEmbeds } from './backfillMemberCasts';
 import { ChannelMember } from '../types/types';
 import { NounishCitizen } from '../types/types';
+import { nounishChannels } from './channels';
 
 // Function to process members after migration
 export async function processMembersFromStagingTable(
@@ -34,8 +35,9 @@ export async function processMembersFromStagingTable(
         `SELECT s.* FROM staging.farcaster_channel_members s
          LEFT JOIN production.farcaster_channel_members p ON s.id = p.id
          WHERE p.id IS NULL
-         ORDER BY s.id LIMIT $1 OFFSET $2`,
-        [batchSize, offset]
+         AND s.channel_id = ANY($1)
+         ORDER BY s.id LIMIT $2 OFFSET $3`,
+        [nounishChannels, batchSize, offset]
       );
 
       if (res.rows.length === 0) {

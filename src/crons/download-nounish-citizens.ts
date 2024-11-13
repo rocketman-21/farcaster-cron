@@ -6,6 +6,7 @@ import { Writable } from 'stream';
 import CSV from 'fast-csv';
 import QueryStream from 'pg-query-stream';
 import { finished } from 'stream/promises';
+import { nounishChannels } from '../lib/channels';
 
 let isDownloadingNounishCitizens = false;
 let downloadPromise: Promise<void> | null = null;
@@ -49,17 +50,6 @@ const downloadNounishCitizens = async (): Promise<void> => {
 
       console.log('Starting nounish citizens download...');
 
-      const channels = [
-        'vrbs',
-        'nouns',
-        'gnars',
-        'flows',
-        'nouns-animators',
-        'nouns-draws',
-        'nouns-impact',
-        'nouns-retro',
-      ];
-
       // Create a query stream
       const query = new QueryStream(
         `SELECT DISTINCT cm.fid, p.fname, cm.channel_id
@@ -67,7 +57,7 @@ const downloadNounishCitizens = async (): Promise<void> => {
          LEFT JOIN production.farcaster_profile p ON cm.fid = p.fid
          WHERE cm.channel_id = ANY($1)
          AND cm.deleted_at IS NULL`,
-        [channels],
+        [nounishChannels],
         { highWaterMark: 10000 }
       );
       const dbStream = client.query(query);
