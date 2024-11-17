@@ -4,6 +4,7 @@ import { downloadProfiles } from '../crons/download-profiles';
 import { downloadNounishCitizens } from '../crons/download-nounish-citizens';
 import { downloadGrants } from '../crons/download-grants';
 import { parse } from 'csv-parse/sync';
+import { Grant, NounishCitizen } from '../types/types';
 
 export const ensureDataFilesExist = async () => {
   // Create data directory if it doesn't exist
@@ -35,7 +36,7 @@ export const ensureDataFilesExist = async () => {
 };
 
 // Helper function to get profiles from CSV
-export const getFidToVerifiedAddresses = () => {
+export const getFidToVerifiedAddresses = (): Map<string, string[]> => {
   const profilesPath = path.resolve(__dirname, '../data/profiles.csv');
   const profiles = new Map<string, string[]>();
 
@@ -61,8 +62,17 @@ export const getFidToVerifiedAddresses = () => {
   return profiles;
 };
 
+export const getAddressToFid = (): Map<string, string> => {
+  const profiles = getFidToVerifiedAddresses();
+  const addressToFid = new Map<string, string>();
+  for (const [fid, addresses] of profiles.entries()) {
+    addresses.forEach((address) => addressToFid.set(address, fid));
+  }
+  return addressToFid;
+};
+
 // Helper function to get grants from CSV
-export const getGrants = () => {
+export const getGrants = (): Grant[] => {
   // Read and parse grants CSV
   const csvPath = path.resolve(__dirname, '../data/grants.csv');
   const csvContent = fs.readFileSync(csvPath, 'utf-8');
@@ -74,7 +84,7 @@ export const getGrants = () => {
 };
 
 // Helper function to get nounish citizens from CSV
-export const getNounishCitizens = () => {
+export const getNounishCitizens = (): NounishCitizen[] => {
   // Read and parse nounish citizens CSV
   const csvPath = path.resolve(__dirname, '../data/nounish-citizens.csv');
   const csvContent = fs.readFileSync(csvPath, 'utf-8');

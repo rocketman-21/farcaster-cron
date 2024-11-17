@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
     mentions_positions TEXT,
     root_parent_hash BYTEA,
     root_parent_url TEXT,
-    computed_tags TEXT[]
+    computed_tags TEXT[],
+    embed_summaries TEXT[]
 );
 
 -- -- Create index on root_parent_hash

@@ -1,4 +1,9 @@
-import { EmbeddingType, IsGrantUpdateJobBody, JobBody } from './job';
+import {
+  BuilderProfileJobBody,
+  EmbeddingType,
+  IsGrantUpdateJobBody,
+  JobBody,
+} from './job';
 
 const validateEnvVars = () => {
   if (!process.env.EMBEDDINGS_QUEUE_URL) {
@@ -19,7 +24,7 @@ const makeRequest = async (endpoint: string, body: any) => {
   };
 
   let lastError;
-  const maxRetries = 3;
+  const maxRetries = 5;
   for (let i = 0; i < maxRetries; i++) {
     try {
       const response = await fetch(
@@ -45,7 +50,7 @@ const makeRequest = async (endpoint: string, body: any) => {
       lastError = error;
       if (i < maxRetries - 1) {
         // Don't wait after the last attempt
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 12000));
       }
     }
   }
@@ -81,4 +86,10 @@ export async function postBulkIsGrantsUpdateRequest(
   payloads: IsGrantUpdateJobBody[]
 ) {
   await makeRequest('/bulk-add-is-grants-update', { jobs: payloads });
+}
+
+export async function postBuilderProfileRequest(
+  payloads: BuilderProfileJobBody[]
+) {
+  await makeRequest('/bulk-add-builder-profile', { jobs: payloads });
 }

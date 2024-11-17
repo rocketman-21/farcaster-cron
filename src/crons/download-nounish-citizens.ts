@@ -49,10 +49,9 @@ const downloadNounishCitizens = async (): Promise<void> => {
       csvStream.pipe(writeStream);
 
       console.log('Starting nounish citizens download...');
-
       // Create a query stream
       const query = new QueryStream(
-        `SELECT DISTINCT cm.fid, p.fname, cm.channel_id
+        `SELECT DISTINCT ON (cm.fid) cm.fid, p.fname, cm.channel_id
          FROM production.farcaster_channel_members cm
          LEFT JOIN production.farcaster_profile p ON cm.fid = p.fid
          WHERE cm.channel_id = ANY($1)

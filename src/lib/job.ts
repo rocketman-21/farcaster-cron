@@ -18,6 +18,7 @@ export const validTypes = [
   'flow',
   'dispute',
   'draft-application',
+  'builder-profile',
 ] as const;
 
 export enum EmbeddingTag {
@@ -39,4 +40,8 @@ export interface IsGrantUpdateJobBody {
   castHash: string;
   grantId: string;
   urls: string[];
+}
+
+export interface BuilderProfileJobBody {
+  fid: string;
 }

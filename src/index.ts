@@ -1,3 +1,4 @@
+import { builderProfiles } from './crons/builder-profiles';
 import cron from 'node-cron';
 import { casts } from './crons/casts';
 import { profiles } from './crons/profiles';
@@ -11,6 +12,7 @@ const fiveSeconds = '*/5 * * * * *';
 const twoMinutes = '*/2 * * * *';
 const tenMinutes = '*/10 * * * *';
 const twoHours = '0 0 */2 * *';
+const threeDays = '0 0 */3 * *';
 
 const schedules: Record<string, { dev: string; prod: string }> = {
   casts: { dev: fiveSeconds, prod: tenMinutes },
@@ -19,6 +21,7 @@ const schedules: Record<string, { dev: string; prod: string }> = {
   'channel-members': { dev: fiveSeconds, prod: tenMinutes },
   downloadNounishCitizens: { dev: fiveSeconds, prod: twoHours },
   downloadGrants: { dev: fiveSeconds, prod: twoHours },
+  builderProfiles: { dev: fiveSeconds, prod: threeDays },
 };
 
 const isProcessing: Record<string, boolean> = {
@@ -28,6 +31,7 @@ const isProcessing: Record<string, boolean> = {
   'channel-members': false,
   downloadNounishCitizens: false,
   downloadGrants: false,
+  builderProfiles: false,
 };
 
 const isEnabled: Record<string, boolean> = {
@@ -37,6 +41,7 @@ const isEnabled: Record<string, boolean> = {
   'channel-members': true,
   downloadNounishCitizens: true,
   downloadGrants: true,
+  builderProfiles: true,
 };
 
 const getSchedule = (key: keyof typeof schedules) => {
@@ -125,4 +130,18 @@ cron.schedule(getSchedule('downloadProfiles'), async () => {
   isProcessing.downloadProfiles = true;
   await downloadProfiles();
   isProcessing.downloadProfiles = false;
+});
+
+// Generate builder profiles
+cron.schedule(getSchedule('builderProfiles'), async () => {
+  if (!isEnabled.builderProfiles) {
+    return;
+  }
+  if (isProcessing.builderProfiles) {
+    console.log('Already generating builder profiles, skipping...');
+    return;
+  }
+  isProcessing.builderProfiles = true;
+  await builderProfiles();
+  isProcessing.builderProfiles = false;
 });
