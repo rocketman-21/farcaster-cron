@@ -8,6 +8,7 @@ export interface JobBody {
   tags: string[];
   externalId: string;
   hashSuffix?: string;
+  externalUrl?: string;
   urls?: string[];
 }
 

@@ -47,10 +47,12 @@ export async function processCastsFromStagingTable(
     let offset = 0;
     let hasMore = true;
     while (hasMore) {
-      const res = await client.query<FarcasterCast>(
-        `SELECT * FROM staging.farcaster_casts 
-         WHERE parent_hash IS NULL
-         ORDER BY id LIMIT $1 OFFSET $2`,
+      const res = await client.query<FarcasterCast & { author_fname: string }>(
+        `SELECT c.*, p.fname as author_fname 
+         FROM staging.farcaster_casts c
+         LEFT JOIN production.farcaster_profile p ON c.fid = p.fid
+         WHERE c.parent_hash IS NULL
+         ORDER BY c.id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
 

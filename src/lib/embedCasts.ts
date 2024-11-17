@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { JobBody } from './job';
 import { postBulkToEmbeddingsQueueRequest } from './queue';
 import { cleanTextForEmbedding } from './embed';
@@ -16,7 +14,9 @@ function pushToUsers(users: string[], value: string) {
   users.push(value);
 }
 
-export async function embedCasts(casts: FarcasterCast[]) {
+export async function embedCasts(
+  casts: (FarcasterCast & { author_fname?: string })[]
+) {
   // Load profiles once for the batch
   const profiles = getFidToVerifiedAddresses();
 
@@ -33,6 +33,11 @@ export async function embedCasts(casts: FarcasterCast[]) {
       users: [],
       groups: [],
       tags: [],
+      externalUrl: cast.author_fname
+        ? `https://warpcast.com/${cast.author_fname}/0x${cast.hash.toString(
+            'hex'
+          )}`
+        : undefined,
       hashSuffix: cast.fid.toString(),
       urls: [],
     };

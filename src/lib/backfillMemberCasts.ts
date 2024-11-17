@@ -1,8 +1,8 @@
 import { Client } from 'pg';
 import { embedCasts } from './embedCasts';
-import { ChannelMember, FarcasterCast } from '../types/types';
+import { FarcasterCast } from '../types/types';
 
-export async function backfillCastEmbeds(members: ChannelMember[]) {
+export async function backfillCastEmbeds(members: { fid: number }[]) {
   console.log('Starting cast embed backfill for new members...');
 
   // Create a new PostgreSQL client
@@ -32,12 +32,16 @@ export async function backfillCastEmbeds(members: ChannelMember[]) {
 
       while (true) {
         const queryStartTime = Date.now();
-        const res = await client.query<FarcasterCast>(
-          `SELECT * FROM production.farcaster_casts 
-          WHERE id > $1 
-          AND fid = ANY($2::bigint[])
-          AND parent_hash IS NULL
-          ORDER BY id 
+        const res = await client.query<
+          FarcasterCast & { author_fname: string }
+        >(
+          `SELECT c.*, p.fname as author_fname 
+          FROM production.farcaster_casts c
+          LEFT JOIN production.farcaster_profile p ON c.fid = p.fid
+          WHERE c.id > $1 
+          AND c.fid = ANY($2::bigint[])
+          AND c.parent_hash IS NULL
+          ORDER BY c.id 
           LIMIT $3`,
           [lastProcessedId, currentFids, batchSize]
         );
