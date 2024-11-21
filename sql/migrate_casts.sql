@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
     parent_url TEXT,
     text TEXT,
     embeds TEXT,
-    mentions JSONB,
+    mentions TEXT,
     mentions_positions TEXT,
     root_parent_hash BYTEA,
     root_parent_url TEXT
@@ -75,18 +75,18 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
 CREATE INDEX IF NOT EXISTS idx_staging_cast_fid
 ON staging.farcaster_casts (fid);
 
--- Create function to extract mentioned_fids from mentions JSONB
--- CREATE OR REPLACE FUNCTION extract_mentioned_fids(mentions_jsonb JSONB)
--- RETURNS TEXT[] AS $$
--- BEGIN
---     CASE
---         WHEN mentions_jsonb IS NOT NULL AND jsonb_typeof(mentions_jsonb) = 'array' THEN
---             RETURN (SELECT array_agg(value::text) FROM jsonb_array_elements_text(mentions_jsonb) AS value);
---         ELSE
---             RETURN NULL;
---     END CASE;
--- END;
--- $$ LANGUAGE plpgsql IMMUTABLE;
+-- Create function to extract mentioned_fids from mentions text
+CREATE OR REPLACE FUNCTION extract_mentioned_fids(mentions_text TEXT)
+RETURNS TEXT[] AS $$
+BEGIN
+    CASE
+        WHEN mentions_text IS NOT NULL AND mentions_text != '' THEN
+            RETURN string_to_array(mentions_text, ',');
+        ELSE
+            RETURN NULL;
+    END CASE;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 -- Migration script with temporary table for deduplication
 DO $$
@@ -144,7 +144,8 @@ BEGIN
             mentions,
             mentions_positions,
             root_parent_hash,
-            root_parent_url
+            root_parent_url,
+            mentioned_fids = extract_mentioned_fids(mentions)
         )
         SELECT
             id,
@@ -162,8 +163,8 @@ BEGIN
             mentions,
             mentions_positions,
             root_parent_hash,
-            root_parent_url
-            -- mentioned_fids = extract_mentioned_fids(mentions)
+            root_parent_url,
+            mentioned_fids = extract_mentioned_fids(mentions)
         FROM
             temp_deduplicated_casts
         WHERE
@@ -186,8 +187,8 @@ BEGIN
             mentions = EXCLUDED.mentions,
             mentions_positions = EXCLUDED.mentions_positions,
             root_parent_hash = EXCLUDED.root_parent_hash,
-            root_parent_url = EXCLUDED.root_parent_url;
-            -- mentioned_fids = EXCLUDED.mentioned_fids;
+            root_parent_url = EXCLUDED.root_parent_url,
+            mentioned_fids = EXCLUDED.mentioned_fids;
 
         -- Update last_id for the next batch
         last_id := current_max_id;
