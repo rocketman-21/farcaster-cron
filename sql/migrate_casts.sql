@@ -80,35 +80,21 @@ ON staging.farcaster_casts (fid);
 CREATE INDEX IF NOT EXISTS idx_staging_casts_id_updated_at
 ON staging.farcaster_casts (id, updated_at DESC);
 
--- Create function to extract mentioned_fids from mentions jsonb
+-- Optimized extract_mentioned_fids function
 CREATE OR REPLACE FUNCTION extract_mentioned_fids(mentions JSONB)
-RETURNS BIGINT[] AS $$
-BEGIN
-    IF mentions IS NOT NULL AND jsonb_array_length(mentions) > 0 THEN
-        RETURN ARRAY(
-            SELECT value::BIGINT
-            FROM jsonb_array_elements_text(mentions) AS elems(value)
-        );
-    ELSE
-        RETURN NULL;
-    END IF;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+RETURNS BIGINT[] LANGUAGE SQL IMMUTABLE PARALLEL SAFE AS $$
+    SELECT array_agg((value::text)::BIGINT)
+    FROM jsonb_array_elements_text(mentions);
+$$;
 
--- Create function to extract mentions_positions_array from mentions_positions text
+-- Optimized extract_mentions_positions function
 CREATE OR REPLACE FUNCTION extract_mentions_positions(positions_text TEXT)
-RETURNS INT[] AS $$
-BEGIN
-    IF positions_text IS NOT NULL AND positions_text <> '[]' THEN
-        RETURN string_to_array(
-            trim(both '[]' FROM positions_text),
-            ','
-        )::INT[];
-    ELSE
-        RETURN NULL;
-    END IF;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
+RETURNS INT[] LANGUAGE SQL IMMUTABLE PARALLEL SAFE AS $$
+    SELECT string_to_array(
+        trim(positions_text, '[]'),
+        ','
+    )::INT[];
+$$;
 
 -- Migration script to process staging records
 
@@ -116,7 +102,23 @@ BEGIN;
 
 -- Define deduped records and perform the insert within the CTE
 WITH deduped AS (
-    SELECT DISTINCT ON (id) *
+    SELECT DISTINCT ON (id)
+        id,
+        created_at,
+        updated_at,
+        deleted_at,
+        timestamp,
+        fid,
+        hash,
+        parent_hash,
+        parent_fid,
+        parent_url,
+        text,
+        embeds,
+        root_parent_hash,
+        root_parent_url,
+        mentions,
+        mentions_positions
     FROM staging.farcaster_casts
     ORDER BY id, updated_at DESC
 ),
