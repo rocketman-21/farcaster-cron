@@ -37,7 +37,29 @@ export interface FarcasterCast {
   parent_url: string | null;
   text: string;
   embeds: string | null;
-  mentions: string | null;
+  embeds_array: any | null;
+  root_parent_hash: Buffer | null;
+  root_parent_url: string | null;
+  computed_tags: string[] | null;
+  embed_summaries: string[] | null;
+  mentioned_fids: number[] | null;
+  mentions_positions_array: number[] | null;
+}
+
+export interface StagingFarcasterCast {
+  id: number;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at: Date | null;
+  timestamp: Date;
+  fid: number;
+  hash: Buffer;
+  parent_hash: Buffer | null;
+  parent_fid: number | null;
+  parent_url: string | null;
+  text: string;
+  embeds: string | null;
+  mentions: any;
   mentions_positions: string | null;
   root_parent_hash: Buffer | null;
   root_parent_url: string | null;

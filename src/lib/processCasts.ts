@@ -1,10 +1,10 @@
 import { Client } from 'pg';
 import { IngestionType } from './s3';
-import { embedCasts } from './embedCasts';
+import { embedCasts } from './embedding/embed-casts';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
-import { NounishCitizen, FarcasterCast, Grant } from '../types/types';
+import { NounishCitizen, Grant, StagingFarcasterCast } from '../types/types';
 import { checkGrantUpdates } from './isGrantUpdate';
 import { getFidToVerifiedAddresses } from './download-csvs';
 import { getGrants } from './download-csvs';
@@ -21,7 +21,7 @@ const isValidRootParentUrl = (rootParentUrl: string | null) => {
 };
 
 // Filter function for casts
-const filterCasts = (row: FarcasterCast, nounishFids: Set<number>) => {
+const filterCasts = (row: StagingFarcasterCast, nounishFids: Set<number>) => {
   const fid = Number(row.fid);
   return isValidRootParentUrl(row.root_parent_url) || nounishFids.has(fid);
 };
@@ -47,7 +47,9 @@ export async function processCastsFromStagingTable(
     let offset = 0;
     let hasMore = true;
     while (hasMore) {
-      const res = await client.query<FarcasterCast & { author_fname: string }>(
+      const res = await client.query<
+        StagingFarcasterCast & { author_fname: string }
+      >(
         `SELECT c.*, p.fname as author_fname 
          FROM staging.farcaster_casts c
          LEFT JOIN production.farcaster_profile p ON c.fid = p.fid
@@ -55,6 +57,12 @@ export async function processCastsFromStagingTable(
          ORDER BY c.id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
+
+      //         FROM production.farcaster_casts c
+
+      // AND c.id = 5878628945
+
+      // console.log({ rows: res.rows.length });
 
       const rows = res.rows;
       hasMore = rows.length > 0;
@@ -82,14 +90,16 @@ export async function processCastsFromStagingTable(
         );
       }
 
+      // throw new Error('Stop here');
+
       offset += batchSize;
     }
   }
 }
 
 function getFilteredRowsWithGrantData(
-  rows: FarcasterCast[]
-): (FarcasterCast & { grantIds: string[] })[] {
+  rows: StagingFarcasterCast[]
+): (StagingFarcasterCast & { grantIds: string[] })[] {
   const grants = getGrants();
   const profiles = getFidToVerifiedAddresses();
 
@@ -106,7 +116,7 @@ function getFilteredRowsWithGrantData(
 }
 
 function filterGrantRecipients(
-  cast: FarcasterCast,
+  cast: StagingFarcasterCast,
   profiles: Map<string, string[]>,
   grants: Grant[]
 ): { isValid: boolean; grantIds: string[] } {

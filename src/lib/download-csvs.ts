@@ -62,6 +62,29 @@ export const getFidToVerifiedAddresses = (): Map<string, string[]> => {
   return profiles;
 };
 
+export const getFidToFname = (): Map<string, string> => {
+  const profilesPath = path.resolve(__dirname, '../data/profiles.csv');
+  const fidToFname = new Map<string, string>();
+
+  const lines = fs.readFileSync(profilesPath, 'utf-8').split('\n');
+  // Skip header
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const [fid, fname] = line.split(',');
+    if (fname) {
+      // Remove quotes and trim whitespace
+      const cleanFname = fname.replace(/"/g, '').trim();
+      if (cleanFname.length > 0) {
+        fidToFname.set(fid, cleanFname);
+      }
+    }
+  }
+
+  return fidToFname;
+};
+
 export const getAddressToFid = (): Map<string, string> => {
   const profiles = getFidToVerifiedAddresses();
   const addressToFid = new Map<string, string>();

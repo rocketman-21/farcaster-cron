@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { embedCasts } from '../lib/embedCasts';
+import { embedCasts } from '../lib/embedding/embed-casts';
 import { ensureDataFilesExist } from '../lib/download-csvs';
 import fs from 'fs';
 import path from 'path';

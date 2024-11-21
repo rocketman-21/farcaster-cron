@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { embedCasts } from './embedCasts';
+import { embedCasts } from './embedding/embed-casts';
 import { FarcasterCast } from '../types/types';
 
 export async function backfillCastEmbeds(members: { fid: number }[]) {
