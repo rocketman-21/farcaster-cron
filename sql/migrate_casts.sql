@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
     parent_url TEXT,
     text TEXT,
     embeds TEXT,
+    embeds_array JSONB,
     mentions TEXT,
     mentions_positions TEXT,
     root_parent_hash BYTEA,
@@ -96,6 +97,16 @@ RETURNS INT[] LANGUAGE SQL IMMUTABLE PARALLEL SAFE AS $$
     )::INT[];
 $$;
 
+-- Optimized extract_embeds_array function
+CREATE OR REPLACE FUNCTION extract_embeds_array(embeds_text TEXT)
+RETURNS JSONB LANGUAGE SQL IMMUTABLE PARALLEL SAFE AS $$
+    SELECT CASE
+        WHEN embeds_text IS NOT NULL AND embeds_text <> ''
+        THEN embeds_text::JSONB
+        ELSE NULL
+    END;
+$$;
+
 -- Migration script to process staging records
 
 BEGIN;
@@ -137,6 +148,7 @@ inserted AS (
         parent_url,
         text,
         embeds,
+        embeds_array,
         root_parent_hash,
         root_parent_url,
         mentioned_fids,
@@ -155,6 +167,7 @@ inserted AS (
         parent_url,
         text,
         embeds,
+        extract_embeds_array(embeds),
         root_parent_hash,
         root_parent_url,
         extract_mentioned_fids(mentions),
@@ -172,6 +185,7 @@ inserted AS (
         parent_url = EXCLUDED.parent_url,
         text = EXCLUDED.text,
         embeds = EXCLUDED.embeds,
+        embeds_array = EXCLUDED.embeds_array,
         root_parent_hash = EXCLUDED.root_parent_hash,
         root_parent_url = EXCLUDED.root_parent_url,
         mentioned_fids = EXCLUDED.mentioned_fids,
