@@ -21,30 +21,31 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
     root_parent_url TEXT,
     computed_tags TEXT[],
     embed_summaries TEXT[],
-    mentioned_fids TEXT[]
+    mentioned_fids BIGINT[],
+    mentions_positions_array INT[]
 );
 
--- -- Create index on root_parent_hash
+-- Create index on root_parent_hash
 CREATE INDEX IF NOT EXISTS idx_production_cast_root_parent_hash
 ON production.farcaster_casts (root_parent_hash);
 
--- -- Create index on hash
+-- Create index on hash
 CREATE INDEX IF NOT EXISTS idx_production_cast_hash
 ON production.farcaster_casts (hash);
 
--- -- Create index on computed_tags
+-- Create index on computed_tags
 CREATE INDEX IF NOT EXISTS idx_production_cast_computed_tags
 ON production.farcaster_casts USING GIN (computed_tags);
 
--- -- Create index on fid
+-- Create index on fid
 CREATE INDEX IF NOT EXISTS idx_production_cast_fid
 ON production.farcaster_casts (fid);
 
--- -- Create index on parent_hash
+-- Create index on parent_hash
 CREATE INDEX IF NOT EXISTS idx_production_cast_parent_hash
 ON production.farcaster_casts (parent_hash);
 
--- -- Create index on root_parent_url
+-- Create index on root_parent_url
 CREATE INDEX IF NOT EXISTS idx_production_cast_root_parent_url
 ON production.farcaster_casts (root_parent_url);
 
@@ -65,7 +66,7 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
     parent_url TEXT,
     text TEXT,
     embeds TEXT,
-    mentions TEXT,
+    mentions JSONB,
     mentions_positions TEXT,
     root_parent_hash BYTEA,
     root_parent_url TEXT
@@ -75,129 +76,109 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
 CREATE INDEX IF NOT EXISTS idx_staging_cast_fid
 ON staging.farcaster_casts (fid);
 
--- Create function to extract mentioned_fids from mentions text
-CREATE OR REPLACE FUNCTION extract_mentioned_fids(mentions_text TEXT)
-RETURNS TEXT[] AS $$
+-- Create index on id and updated_at in the staging table
+CREATE INDEX IF NOT EXISTS idx_staging_casts_id_updated_at
+ON staging.farcaster_casts (id, updated_at DESC);
+
+-- Create function to extract mentioned_fids from mentions jsonb
+CREATE OR REPLACE FUNCTION extract_mentioned_fids(mentions JSONB)
+RETURNS BIGINT[] AS $$
 BEGIN
-    CASE
-        WHEN mentions_text IS NOT NULL AND mentions_text != '' THEN
-            RETURN string_to_array(mentions_text, ',');
-        ELSE
-            RETURN NULL;
-    END CASE;
+    IF mentions IS NOT NULL AND jsonb_array_length(mentions) > 0 THEN
+        RETURN ARRAY(
+            SELECT value::BIGINT
+            FROM jsonb_array_elements_text(mentions) AS elems(value)
+        );
+    ELSE
+        RETURN NULL;
+    END IF;
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
--- Migration script with temporary table for deduplication
-DO $$
-DECLARE
-    batch_size INTEGER := 10000;
-    last_id BIGINT := 0;
-    current_max_id BIGINT;
+-- Create function to extract mentions_positions_array from mentions_positions text
+CREATE OR REPLACE FUNCTION extract_mentions_positions(positions_text TEXT)
+RETURNS INT[] AS $$
 BEGIN
-    -- Create a temporary table with deduplicated data
-    CREATE TEMP TABLE temp_deduplicated_casts AS
-    SELECT *
-    FROM (
-        SELECT
-            *,
-            ROW_NUMBER() OVER (
-                PARTITION BY id
-                ORDER BY updated_at DESC, ctid ASC
-            ) AS rn
-        FROM staging.farcaster_casts
-    ) sub
-    WHERE rn = 1;
+    IF positions_text IS NOT NULL AND positions_text <> '[]' THEN
+        RETURN string_to_array(
+            trim(both '[]' FROM positions_text),
+            ','
+        )::INT[];
+    ELSE
+        RETURN NULL;
+    END IF;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
-    -- Create an index on the temporary table
-    CREATE INDEX idx_temp_cast_id ON temp_deduplicated_casts(id);
+-- Migration script to process staging records
 
-    -- Process data in batches using the temporary table
-    LOOP
-        -- Get the maximum id in the current batch
-        SELECT MAX(id) INTO current_max_id
-        FROM (
-            SELECT id
-            FROM temp_deduplicated_casts
-            WHERE id > last_id
-            ORDER BY id
-            LIMIT batch_size
-        ) sub;
+BEGIN;
 
-        -- Exit the loop if no more records
-        EXIT WHEN current_max_id IS NULL;
+-- Define deduped records and perform the insert within the CTE
+WITH deduped AS (
+    SELECT DISTINCT ON (id) *
+    FROM staging.farcaster_casts
+    ORDER BY id, updated_at DESC
+),
+inserted AS (
+    -- Insert deduplicated data into the production table
+    INSERT INTO production.farcaster_casts (
+        id,
+        created_at,
+        updated_at,
+        deleted_at,
+        timestamp,
+        fid,
+        hash,
+        parent_hash,
+        parent_fid,
+        parent_url,
+        text,
+        embeds,
+        root_parent_hash,
+        root_parent_url,
+        mentioned_fids,
+        mentions_positions_array
+    )
+    SELECT
+        id,
+        created_at,
+        updated_at,
+        deleted_at,
+        timestamp,
+        fid,
+        hash,
+        parent_hash,
+        parent_fid,
+        parent_url,
+        text,
+        embeds,
+        root_parent_hash,
+        root_parent_url,
+        extract_mentioned_fids(mentions),
+        extract_mentions_positions(mentions_positions)
+    FROM deduped
+    ON CONFLICT (id) DO UPDATE SET
+        created_at = EXCLUDED.created_at,
+        updated_at = EXCLUDED.updated_at,
+        deleted_at = EXCLUDED.deleted_at,
+        timestamp = EXCLUDED.timestamp,
+        fid = EXCLUDED.fid,
+        hash = EXCLUDED.hash,
+        parent_hash = EXCLUDED.parent_hash,
+        parent_fid = EXCLUDED.parent_fid,
+        parent_url = EXCLUDED.parent_url,
+        text = EXCLUDED.text,
+        embeds = EXCLUDED.embeds,
+        root_parent_hash = EXCLUDED.root_parent_hash,
+        root_parent_url = EXCLUDED.root_parent_url,
+        mentioned_fids = EXCLUDED.mentioned_fids,
+        mentions_positions_array = EXCLUDED.mentions_positions_array
+    RETURNING id
+)
+-- Delete processed records from the staging table
+DELETE FROM staging.farcaster_casts
+USING deduped
+WHERE staging.farcaster_casts.id = deduped.id;
 
-        -- Process the current batch and convert timestamps
-        INSERT INTO production.farcaster_casts (
-            id,
-            created_at,
-            updated_at,
-            deleted_at,
-            timestamp,
-            fid,
-            hash,
-            parent_hash,
-            parent_fid,
-            parent_url,
-            text,
-            embeds,
-            mentions,
-            mentions_positions,
-            root_parent_hash,
-            root_parent_url,
-            mentioned_fids = extract_mentioned_fids(mentions)
-        )
-        SELECT
-            id,
-            created_at,
-            updated_at,
-            deleted_at,
-            timestamp,
-            fid,
-            hash,
-            parent_hash,
-            parent_fid,
-            parent_url,
-            text,
-            embeds,
-            mentions,
-            mentions_positions,
-            root_parent_hash,
-            root_parent_url,
-            mentioned_fids = extract_mentioned_fids(mentions)
-        FROM
-            temp_deduplicated_casts
-        WHERE
-            id > last_id 
-            AND id <= current_max_id
-        ORDER BY
-            id
-        ON CONFLICT (id) DO UPDATE SET
-            created_at = EXCLUDED.created_at,
-            updated_at = EXCLUDED.updated_at,
-            deleted_at = EXCLUDED.deleted_at,
-            timestamp = EXCLUDED.timestamp,
-            fid = EXCLUDED.fid,
-            hash = EXCLUDED.hash,
-            parent_hash = EXCLUDED.parent_hash,
-            parent_fid = EXCLUDED.parent_fid,
-            parent_url = EXCLUDED.parent_url,
-            text = EXCLUDED.text,
-            embeds = EXCLUDED.embeds,
-            mentions = EXCLUDED.mentions,
-            mentions_positions = EXCLUDED.mentions_positions,
-            root_parent_hash = EXCLUDED.root_parent_hash,
-            root_parent_url = EXCLUDED.root_parent_url,
-            mentioned_fids = EXCLUDED.mentioned_fids;
-
-        -- Update last_id for the next batch
-        last_id := current_max_id;
-    END LOOP;
-
-    -- Drop the temporary table
-    DROP TABLE IF EXISTS temp_deduplicated_casts;
-
-    -- Truncate the staging table
-    -- TRUNCATE TABLE staging.farcaster_casts;
-
-END $$ LANGUAGE plpgsql;
+COMMIT;

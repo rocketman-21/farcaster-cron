@@ -59,9 +59,8 @@ export async function embedCasts(
     // Parse mentions and add to tags array along with their verified addresses
     if (cast.mentions) {
       try {
-        const mentionsArray = JSON.parse(cast.mentions);
-        if (Array.isArray(mentionsArray)) {
-          for (const mention of mentionsArray) {
+        if (Array.isArray(cast.mentions)) {
+          for (const mention of cast.mentions) {
             const mentionStr = mention.toString();
             // push mention to tags
             payload.tags.push(mentionStr);
@@ -72,6 +71,7 @@ export async function embedCasts(
           }
         }
       } catch (error) {
+        console.log(cast.mentions);
         console.error(
           `Error parsing mentions for cast 0x${cast.hash.toString('hex')}:`,
           error
