@@ -36,6 +36,7 @@ export async function checkGrantUpdates(
         castHash: `0x${cast.hash.toString('hex')}`,
         grantId: grant.id,
         urls: getCastEmbedUrls(cast.embeds),
+        builderFid: cast.fid.toString(),
       };
 
       if (payload.castContent || payload.urls.length > 0) {
@@ -49,7 +50,7 @@ export async function checkGrantUpdates(
     }
   }
 
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 10;
   // Send payloads in batches
   for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
     const batch = payloads.slice(i, i + BATCH_SIZE);
