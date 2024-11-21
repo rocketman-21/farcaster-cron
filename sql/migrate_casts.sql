@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS production.farcaster_casts (
     root_parent_hash BYTEA,
     root_parent_url TEXT,
     computed_tags TEXT[],
-    embed_summaries TEXT[]
+    embed_summaries TEXT[],
+    mentioned_fids TEXT[]
 );
 
 -- -- Create index on root_parent_hash
@@ -64,7 +65,7 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
     parent_url TEXT,
     text TEXT,
     embeds TEXT,
-    mentions TEXT,
+    mentions JSONB,
     mentions_positions TEXT,
     root_parent_hash BYTEA,
     root_parent_url TEXT
@@ -73,6 +74,19 @@ CREATE TABLE IF NOT EXISTS staging.farcaster_casts (
 -- Create index on fid
 CREATE INDEX IF NOT EXISTS idx_staging_cast_fid
 ON staging.farcaster_casts (fid);
+
+-- Create function to extract mentioned_fids from mentions JSONB
+-- CREATE OR REPLACE FUNCTION extract_mentioned_fids(mentions_jsonb JSONB)
+-- RETURNS TEXT[] AS $$
+-- BEGIN
+--     CASE
+--         WHEN mentions_jsonb IS NOT NULL AND jsonb_typeof(mentions_jsonb) = 'array' THEN
+--             RETURN (SELECT array_agg(value::text) FROM jsonb_array_elements_text(mentions_jsonb) AS value);
+--         ELSE
+--             RETURN NULL;
+--     END CASE;
+-- END;
+-- $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- Migration script with temporary table for deduplication
 DO $$
@@ -149,6 +163,7 @@ BEGIN
             mentions_positions,
             root_parent_hash,
             root_parent_url
+            -- mentioned_fids = extract_mentioned_fids(mentions)
         FROM
             temp_deduplicated_casts
         WHERE
@@ -172,6 +187,7 @@ BEGIN
             mentions_positions = EXCLUDED.mentions_positions,
             root_parent_hash = EXCLUDED.root_parent_hash,
             root_parent_url = EXCLUDED.root_parent_url;
+            -- mentioned_fids = EXCLUDED.mentioned_fids;
 
         -- Update last_id for the next batch
         last_id := current_max_id;
@@ -181,6 +197,6 @@ BEGIN
     DROP TABLE IF EXISTS temp_deduplicated_casts;
 
     -- Truncate the staging table
-    TRUNCATE TABLE staging.farcaster_casts;
+    -- TRUNCATE TABLE staging.farcaster_casts;
 
 END $$ LANGUAGE plpgsql;
