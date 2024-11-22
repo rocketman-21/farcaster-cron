@@ -117,7 +117,4 @@ BEGIN
     -- Drop the temporary table
     DROP TABLE IF EXISTS temp_deduplicated_channel_members;
 
-    -- Truncate the staging table
-    TRUNCATE TABLE staging.farcaster_channel_members;
-
 END $$ LANGUAGE plpgsql;

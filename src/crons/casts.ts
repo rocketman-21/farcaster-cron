@@ -1,5 +1,4 @@
 import {
-  timestampDir,
   initializeTimestamps,
   processParquetFiles,
   logProcessingStatus,

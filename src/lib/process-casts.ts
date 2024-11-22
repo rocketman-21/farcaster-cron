@@ -48,7 +48,6 @@ export async function processCastsFromStagingTable(
 
     // Create set of nounish citizen FIDs for faster lookups
     const nounishFids = new Set(nounishCitizens.map((row) => Number(row.fid)));
-    const fids = [263648];
 
     const batchSize = 10000;
     let offset = 0;

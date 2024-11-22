@@ -34,14 +34,17 @@ export async function processFile(key: string, type: IngestionType) {
           `Successfully ingested ${result.rowCount} new rows from file: ${key}`
         );
 
+        // Run migration scripts if necessary
+        await runMigrationScripts(tableName, client);
+
         if (type === 'casts') {
           await processCastsFromStagingTable(type, client);
         } else if (type === 'channel-members') {
           await processMembersFromStagingTable(type, client);
         }
 
-        // Run migration scripts if necessary
-        await runMigrationScripts(tableName, client);
+        await clearStagingTable(tableName, client);
+
         break;
       } catch (err: any) {
         if (err.code === '40P01' && retries > 1) {
@@ -79,5 +82,20 @@ async function runMigrationScripts(tableName: string, client: Client) {
     );
     await client.query(migrateScript);
     console.log(`Migration script executed for ${tableName}`);
+  }
+}
+
+async function clearStagingTable(tableName: string, client: Client) {
+  const stagingTableNames: Record<string, string> = {
+    farcaster_profile_with_addresses: 'farcaster_profile_with_addresses',
+    farcaster_casts: 'farcaster_casts',
+    farcaster_channel_members: 'farcaster_channel_members',
+  };
+
+  const stagingTableName = stagingTableNames[tableName];
+  if (stagingTableName) {
+    const truncateCommand = `TRUNCATE TABLE staging.${stagingTableName} CASCADE;`;
+    await client.query(truncateCommand);
+    console.log(`Staging table ${stagingTableName} truncated`);
   }
 }

@@ -131,7 +131,4 @@ BEGIN
     -- Drop the temporary table
     DROP TABLE IF EXISTS temp_deduplicated_profiles;
 
-    -- Truncate the staging table
-    TRUNCATE TABLE staging.farcaster_profile_with_addresses;
-
 END $$ LANGUAGE plpgsql; 

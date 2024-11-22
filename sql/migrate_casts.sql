@@ -192,9 +192,5 @@ inserted AS (
         mentions_positions_array = EXCLUDED.mentions_positions_array
     RETURNING id
 )
--- Delete processed records from the staging table
-DELETE FROM staging.farcaster_casts
-USING deduped
-WHERE staging.farcaster_casts.id = deduped.id;
 
 COMMIT;
