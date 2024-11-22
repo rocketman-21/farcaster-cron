@@ -51,12 +51,6 @@ export async function embedStagingCasts(
 
     // Insert mentions into content for staging format
     if (cast.mentions_positions && cast.mentions) {
-      // log the type
-      console.warn(cast.mentions_positions);
-      console.warn(cast.mentions);
-      console.warn(
-        `staging cast.mentions_positions: ${typeof cast.mentions_positions}, cast.mentions: ${typeof cast.mentions}`
-      );
       content = insertMentionsIntoText(
         content,
         JSON.parse(cast.mentions_positions || '[]'),

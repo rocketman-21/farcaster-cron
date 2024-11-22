@@ -1,12 +1,12 @@
 import { IsGrantUpdateJobBody } from './job';
 import { postBulkIsGrantsUpdateRequest } from './queue';
-import { FarcasterCast, Grant } from '../types/types';
+import { Grant, StagingFarcasterCast } from '../types/types';
 import { cleanTextForEmbedding } from './embed';
 import { getCastEmbedUrls } from './getCastEmbedUrls';
 import { insertMentionsIntoText } from './mentions/add-mentions';
 
 export async function checkGrantUpdates(
-  casts: (FarcasterCast & { grantIds: string[] })[],
+  casts: (StagingFarcasterCast & { grantIds: string[] })[],
   grants: Grant[],
   fidToFname: Map<string, string>
 ) {
@@ -31,8 +31,8 @@ export async function checkGrantUpdates(
 
       const textWithMentions = insertMentionsIntoText(
         cast.text,
-        cast.mentions_positions_array || [],
-        cast.mentioned_fids || [],
+        JSON.parse(cast.mentions_positions || '[]'),
+        cast.mentions || [],
         fidToFname
       );
 
