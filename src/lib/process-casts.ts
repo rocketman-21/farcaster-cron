@@ -82,6 +82,9 @@ export async function processCastsFromStagingTable(
       const filteredRows = rows.filter((row) => filterCasts(row, nounishFids));
 
       if (filteredRows.length > 0) {
+        console.log(
+          `Embedding batch of ${filteredRows.length} casts (offset: ${offset}, non-filtered: ${rows.length})`
+        );
         await embedStagingCasts(
           filteredRows,
           fidToFname,
@@ -95,6 +98,9 @@ export async function processCastsFromStagingTable(
       const filteredRowsWithGrantData = getFilteredRowsWithGrantData(rows);
 
       if (filteredRowsWithGrantData.length > 0) {
+        console.log(
+          `Checking grant updates for batch of ${filteredRowsWithGrantData.length} casts (offset: ${offset})`
+        );
         await checkGrantUpdates(
           filteredRowsWithGrantData,
           getGrants(),

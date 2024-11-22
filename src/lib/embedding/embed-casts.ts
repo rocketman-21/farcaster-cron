@@ -45,7 +45,8 @@ export async function embedStagingCasts(
 
   const payloads: JobBody[] = [];
 
-  for (const cast of casts) {
+  for (let i = 0; i < casts.length; i++) {
+    const cast = casts[i];
     let content = cast.text;
     if (!content || content === '') continue;
 
