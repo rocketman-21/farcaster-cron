@@ -1,6 +1,6 @@
 import { Client } from 'pg';
-import { embedCasts } from './embedding/embed-casts';
-import { FarcasterCast } from '../types/types';
+import { embedProductionCasts } from '../embedding/embed-casts';
+import { FarcasterCast } from '../../types/types';
 
 export async function backfillCastEmbeds(members: { fid: number }[]) {
   console.log('Starting cast embed backfill for new members...');
@@ -55,7 +55,7 @@ export async function backfillCastEmbeds(members: { fid: number }[]) {
 
         console.log(`Embedding ${res.rows.length} casts...`);
         const embedStartTime = Date.now();
-        await embedCasts(res.rows);
+        await embedProductionCasts(res.rows);
         const embedDuration = Date.now() - embedStartTime;
 
         lastProcessedId = res.rows[res.rows.length - 1].id;

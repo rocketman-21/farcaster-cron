@@ -1,9 +1,9 @@
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
-import { bucketName, getTableNameFromKey, IngestionType } from './s3';
-import { processCastsFromStagingTable } from './processCasts';
-import { processMembersFromStagingTable } from './processMembers';
+import { bucketName, getTableNameFromKey, IngestionType } from '../s3';
+import { processCastsFromStagingTable } from '../process-casts';
+import { processMembersFromStagingTable } from '../channel-members/process';
 
 // Function to process a single file
 export async function processFile(key: string, type: IngestionType) {

@@ -7,23 +7,8 @@ import { insertMentionsIntoText } from '../mentions/add-mentions';
 import { createBasePayload, sendPayloadsInBatches } from './payloads';
 import { finalizePayload } from './payloads';
 
-// Main embedCasts function that routes to the appropriate handler
-export async function embedCasts(
-  casts: (StagingFarcasterCast | FarcasterCast)[]
-) {
-  if (casts.length === 0) {
-    // Handle empty array case, possibly return early or log a warning
-    console.warn('No casts to embed');
-    return;
-  }
-
-  // Check first cast to determine type
-  if ('mentions_positions' in casts[0]) {
-    await embedStagingCasts(casts as StagingFarcasterCast[]);
-  } else {
-    await embedProductionCasts(casts as FarcasterCast[]);
-  }
-}
+const fidToFname = getFidToFname();
+const profiles = getFidToVerifiedAddresses();
 
 // Helper function to handle mentions
 function handleMentions(
@@ -51,9 +36,13 @@ function handleMentions(
 }
 
 // Handler for staging casts
-async function embedStagingCasts(casts: StagingFarcasterCast[]) {
-  const profiles = getFidToVerifiedAddresses();
-  const fidToFname = getFidToFname();
+export async function embedStagingCasts(casts: StagingFarcasterCast[]) {
+  if (casts.length === 0) {
+    // Handle empty array case, possibly return early or log a warning
+    console.warn('No casts to embed');
+    return;
+  }
+
   const payloads: JobBody[] = [];
 
   for (const cast of casts) {
@@ -62,10 +51,16 @@ async function embedStagingCasts(casts: StagingFarcasterCast[]) {
 
     // Insert mentions into content for staging format
     if (cast.mentions_positions && cast.mentions) {
+      // log the type
+      console.warn(cast.mentions_positions);
+      console.warn(cast.mentions);
+      console.warn(
+        `staging cast.mentions_positions: ${typeof cast.mentions_positions}, cast.mentions: ${typeof cast.mentions}`
+      );
       content = insertMentionsIntoText(
         content,
-        JSON.parse(cast.mentions_positions), // Parse string to number[]
-        cast.mentions,
+        JSON.parse(cast.mentions_positions || '[]'),
+        cast.mentions || [],
         fidToFname
       );
     }
@@ -88,9 +83,13 @@ async function embedStagingCasts(casts: StagingFarcasterCast[]) {
 }
 
 // Handler for production casts
-async function embedProductionCasts(casts: FarcasterCast[]) {
-  const profiles = getFidToVerifiedAddresses();
-  const fidToFname = getFidToFname();
+export async function embedProductionCasts(casts: FarcasterCast[]) {
+  if (casts.length === 0) {
+    // Handle empty array case, possibly return early or log a warning
+    console.warn('No casts to embed');
+    return;
+  }
+
   const payloads: JobBody[] = [];
 
   for (const cast of casts) {
@@ -101,8 +100,8 @@ async function embedProductionCasts(casts: FarcasterCast[]) {
     if (cast.mentions_positions_array && cast.mentioned_fids) {
       content = insertMentionsIntoText(
         content,
-        cast.mentions_positions_array,
-        cast.mentioned_fids,
+        cast.mentions_positions_array || [],
+        cast.mentioned_fids || [],
         fidToFname
       );
     }

@@ -8,7 +8,7 @@ import {
   prefixes,
   s3Client,
 } from '../lib/s3';
-import { processFile } from '../lib/processFile';
+import { processFile } from '../lib/parquet-file/process';
 
 // Path to store the latest processed timestamps
 export const timestampDir = path.resolve(__dirname, 'timestamps');

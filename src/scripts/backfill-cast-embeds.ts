@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { embedCasts } from '../lib/embedding/embed-casts';
+import { embedProductionCasts } from '../lib/embedding/embed-casts';
 import { ensureDataFilesExist } from '../lib/download-csvs';
 import fs from 'fs';
 import path from 'path';
@@ -75,7 +75,7 @@ export async function backfillEmbed() {
 
         console.log(`Embedding ${res.rows.length} casts...`);
         const embedStartTime = Date.now();
-        await embedCasts(res.rows);
+        await embedProductionCasts(res.rows);
         const embedDuration = Date.now() - embedStartTime;
 
         currentLastId = res.rows[res.rows.length - 1].id;

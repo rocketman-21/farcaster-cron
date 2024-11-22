@@ -1,11 +1,14 @@
 import { IsGrantUpdateJobBody } from './job';
 import { postBulkIsGrantsUpdateRequest } from './queue';
-import { Grant, StagingFarcasterCast } from '../types/types';
+import { FarcasterCast, Grant } from '../types/types';
 import { cleanTextForEmbedding } from './embed';
 import { getCastEmbedUrls } from './getCastEmbedUrls';
+import { insertMentionsIntoText } from './mentions/add-mentions';
+import { getFidToFname } from './download-csvs';
+const fidToFname = getFidToFname();
 
 export async function checkGrantUpdates(
-  casts: (StagingFarcasterCast & { grantIds: string[] })[],
+  casts: (FarcasterCast & { grantIds: string[] })[],
   grants: Grant[]
 ) {
   const payloads: IsGrantUpdateJobBody[] = [];
@@ -27,8 +30,15 @@ export async function checkGrantUpdates(
         (g) => g.recipient.toLowerCase() === grant.parentContract.toLowerCase()
       );
 
+      const textWithMentions = insertMentionsIntoText(
+        cast.text,
+        cast.mentions_positions_array || [],
+        cast.mentioned_fids || [],
+        fidToFname
+      );
+
       const payload: IsGrantUpdateJobBody = {
-        castContent: cleanTextForEmbedding(cast.text),
+        castContent: cleanTextForEmbedding(textWithMentions),
         grantDescription: cleanTextForEmbedding(grant.description || ''),
         parentFlowDescription: cleanTextForEmbedding(
           parentGrant?.description || ''
@@ -56,7 +66,7 @@ export async function checkGrantUpdates(
     const batch = payloads.slice(i, i + BATCH_SIZE);
     await postBulkIsGrantsUpdateRequest(batch);
     console.log(
-      `Successfully called embeddings queue for batch of ${batch.length} grant update checks (offset: ${i})`
+      `Successfully checked grant updates for batch of ${batch.length} casts (offset: ${i})`
     );
   }
 }

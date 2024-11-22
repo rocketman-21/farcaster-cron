@@ -1,27 +1,41 @@
 import { TextEncoder } from 'util';
+const encoder = new TextEncoder();
 
-// Helper function to map byte position to code unit position
-function bytePositionToCodeUnitPosition(
-  text: string,
-  bytePosition: number
-): number {
-  const encoder = new TextEncoder();
+// Precompute byte to code unit position mapping
+function createByteToCodeUnitMap(text: string): number[] {
+  const encodedText = encoder.encode(text);
+
+  const byteToCodeUnitMap: number[] = [];
   let codeUnitPos = 0;
-  let bytePos = 0;
 
-  while (bytePos < bytePosition && codeUnitPos < text.length) {
+  for (let bytePos = 0; bytePos < encodedText.length; ) {
     const codePoint = text.codePointAt(codeUnitPos);
     if (codePoint === undefined) break;
 
     const codePointStr = String.fromCodePoint(codePoint);
-    const codePointBytes = encoder.encode(codePointStr);
-    bytePos += codePointBytes.length;
+    const codeUnitLength = codePointStr.length;
+    const codePointByteLength = encoder.encode(codePointStr).length;
 
-    // Advance code unit position by the length of the code point
-    codeUnitPos += codePointStr.length;
+    for (let i = 0; i < codePointByteLength; i++) {
+      byteToCodeUnitMap[bytePos + i] = codeUnitPos;
+    }
+
+    bytePos += codePointByteLength;
+    codeUnitPos += codeUnitLength;
   }
 
-  return codeUnitPos;
+  return byteToCodeUnitMap;
+}
+
+// Optimized helper function to map byte position to code unit position
+function bytePositionToCodeUnitPosition(
+  byteToCodeUnitMap: number[],
+  bytePosition: number
+): number {
+  return (
+    byteToCodeUnitMap[bytePosition] ||
+    byteToCodeUnitMap[byteToCodeUnitMap.length - 1]
+  );
 }
 
 // Helper function to insert mentions into the text
@@ -36,24 +50,29 @@ export function insertMentionsIntoText(
     !Array.isArray(mentionedFids) ||
     mentionPositions.length !== mentionedFids.length
   ) {
-    console.warn('Mismatched or invalid mentions data');
-    return originalText;
+    console.warn(`${typeof mentionPositions}, ${typeof mentionedFids}`);
+    console.warn(
+      `mentionPositions: ${mentionPositions}, mentionedFids: ${mentionedFids}`
+    );
+    throw new Error('Mismatched or invalid mentions data');
   }
+
+  // Precompute the byte to code unit mapping once
+  const byteToCodeUnitMap = createByteToCodeUnitMap(originalText);
 
   // Map byte positions to code unit positions
   const mentionsData = mentionPositions
     .map((bytePosition, index) => {
       const fid = mentionedFids[index];
       const codeUnitPosition = bytePositionToCodeUnitPosition(
-        originalText,
+        byteToCodeUnitMap,
         bytePosition
       );
 
       if (codeUnitPosition < 0 || codeUnitPosition > originalText.length) {
-        console.warn(
+        throw new Error(
           `Invalid byte position ${bytePosition} for fid ${fid} in cast "${originalText}"`
         );
-        return null;
       }
 
       return {
@@ -66,7 +85,9 @@ export function insertMentionsIntoText(
     .sort((a, b) => a!.position - b!.position);
 
   let modifiedText = originalText;
-  let positionShift = 0;
+
+  let lastIndex = 0;
+  const segments: string[] = [];
 
   for (const mention of mentionsData) {
     if (!mention) throw new Error('Mention is null');
@@ -74,24 +95,19 @@ export function insertMentionsIntoText(
     const fidString = mention.fid.toString();
     const fname = fidToFname.get(fidString) || fidString;
     const mentionText = `@${fname}`;
-    const position = mention.position + positionShift;
+    const position = mention.position;
 
-    if (position < 0 || position > modifiedText.length) {
-      console.warn(
-        `Invalid mention position ${position} for fid ${mention.fid}`
-      );
-      continue;
-    }
+    // Append the text before the mention
+    segments.push(modifiedText.slice(lastIndex, position));
+    // Append the mention
+    segments.push(mentionText);
 
-    // Insert the mention into the text
-    modifiedText =
-      modifiedText.slice(0, position) +
-      mentionText +
-      modifiedText.slice(position);
-
-    // Update the position shift
-    positionShift += mentionText.length;
+    lastIndex = position;
   }
 
-  return modifiedText;
+  // Append any remaining text after the last mention
+  segments.push(modifiedText.slice(lastIndex));
+
+  // Join all segments
+  return segments.join('');
 }

@@ -44,6 +44,14 @@ export interface FarcasterCast {
   embed_summaries: string[] | null;
   mentioned_fids: number[] | null;
   mentions_positions_array: number[] | null;
+  impact_verifications: {
+    model: string;
+    score: number;
+    reason: string;
+    is_grant_update: boolean;
+    prompt_version: string;
+    grant_id: string;
+  }[];
 }
 
 export interface StagingFarcasterCast {
