@@ -111,7 +111,6 @@ $$;
 
 BEGIN;
 
--- Define deduped records and perform the insert within the CTE
 WITH deduped AS (
     SELECT DISTINCT ON (id)
         id,
@@ -132,65 +131,63 @@ WITH deduped AS (
         mentions_positions
     FROM staging.farcaster_casts
     ORDER BY id, updated_at DESC
-),
-inserted AS (
-    -- Insert deduplicated data into the production table
-    INSERT INTO production.farcaster_casts (
-        id,
-        created_at,
-        updated_at,
-        deleted_at,
-        timestamp,
-        fid,
-        hash,
-        parent_hash,
-        parent_fid,
-        parent_url,
-        text,
-        embeds,
-        embeds_array,
-        root_parent_hash,
-        root_parent_url,
-        mentioned_fids,
-        mentions_positions_array
-    )
-    SELECT
-        id,
-        created_at,
-        updated_at,
-        deleted_at,
-        timestamp,
-        fid,
-        hash,
-        parent_hash,
-        parent_fid,
-        parent_url,
-        text,
-        embeds,
-        extract_embeds_array(embeds),
-        root_parent_hash,
-        root_parent_url,
-        extract_mentioned_fids(mentions),
-        extract_mentions_positions(mentions_positions)
-    FROM deduped
-    ON CONFLICT (id) DO UPDATE SET
-        created_at = EXCLUDED.created_at,
-        updated_at = EXCLUDED.updated_at,
-        deleted_at = EXCLUDED.deleted_at,
-        timestamp = EXCLUDED.timestamp,
-        fid = EXCLUDED.fid,
-        hash = EXCLUDED.hash,
-        parent_hash = EXCLUDED.parent_hash,
-        parent_fid = EXCLUDED.parent_fid,
-        parent_url = EXCLUDED.parent_url,
-        text = EXCLUDED.text,
-        embeds = EXCLUDED.embeds,
-        embeds_array = EXCLUDED.embeds_array,
-        root_parent_hash = EXCLUDED.root_parent_hash,
-        root_parent_url = EXCLUDED.root_parent_url,
-        mentioned_fids = EXCLUDED.mentioned_fids,
-        mentions_positions_array = EXCLUDED.mentions_positions_array
-    RETURNING id
 )
+-- Insert deduplicated data into the production table
+INSERT INTO production.farcaster_casts (
+    id,
+    created_at,
+    updated_at,
+    deleted_at,
+    timestamp,
+    fid,
+    hash,
+    parent_hash,
+    parent_fid,
+    parent_url,
+    text,
+    embeds,
+    embeds_array,
+    root_parent_hash,
+    root_parent_url,
+    mentioned_fids,
+    mentions_positions_array
+)
+SELECT
+    id,
+    created_at,
+    updated_at,
+    deleted_at,
+    timestamp,
+    fid,
+    hash,
+    parent_hash,
+    parent_fid,
+    parent_url,
+    text,
+    embeds,
+    extract_embeds_array(embeds),
+    root_parent_hash,
+    root_parent_url,
+    extract_mentioned_fids(mentions),
+    extract_mentions_positions(mentions_positions)
+FROM deduped
+ON CONFLICT (id) DO UPDATE SET
+    created_at = EXCLUDED.created_at,
+    updated_at = EXCLUDED.updated_at,
+    deleted_at = EXCLUDED.deleted_at,
+    timestamp = EXCLUDED.timestamp,
+    fid = EXCLUDED.fid,
+    hash = EXCLUDED.hash,
+    parent_hash = EXCLUDED.parent_hash,
+    parent_fid = EXCLUDED.parent_fid,
+    parent_url = EXCLUDED.parent_url,
+    text = EXCLUDED.text,
+    embeds = EXCLUDED.embeds,
+    embeds_array = EXCLUDED.embeds_array,
+    root_parent_hash = EXCLUDED.root_parent_hash,
+    root_parent_url = EXCLUDED.root_parent_url,
+    mentioned_fids = EXCLUDED.mentioned_fids,
+    mentions_positions_array = EXCLUDED.mentions_positions_array
+RETURNING id;
 
 COMMIT;

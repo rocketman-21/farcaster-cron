@@ -53,6 +53,8 @@ export async function processCastsFromStagingTable(
     let offset = 0;
     let hasMore = true;
 
+    console.log('Processing casts from staging table');
+
     while (hasMore) {
       const res = await client.query<
         StagingFarcasterCast & { author_fname: string }
@@ -72,6 +74,10 @@ export async function processCastsFromStagingTable(
         offset += batchSize;
         continue;
       }
+
+      console.log(
+        `Processing batch of ${rows.length} casts (offset: ${offset})`
+      );
 
       const filteredRows = rows.filter((row) => filterCasts(row, nounishFids));
 
