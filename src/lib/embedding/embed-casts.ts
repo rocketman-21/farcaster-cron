@@ -1,20 +1,16 @@
 import { JobBody } from '../job';
 import { cleanTextForEmbedding } from '../embed';
 import { StagingFarcasterCast, FarcasterCast } from '../../types/types';
-import { getFidToFname, getFidToVerifiedAddresses } from '../download-csvs';
 import { getCastEmbedUrls } from '../getCastEmbedUrls';
 import { insertMentionsIntoText } from '../mentions/add-mentions';
 import { createBasePayload, sendPayloadsInBatches } from './payloads';
 import { finalizePayload } from './payloads';
 
-const fidToFname = getFidToFname();
-const profiles = getFidToVerifiedAddresses();
-
 // Helper function to handle mentions
 function handleMentions(
   mentions: number[],
   payload: JobBody,
-  profiles: Map<string, string[]>,
+  fidToVerifiedAddresses: Map<string, string[]>,
   castHash: Buffer
 ) {
   try {
@@ -23,7 +19,7 @@ function handleMentions(
         const mentionStr = mention.toString();
         payload.tags.push(mentionStr);
 
-        const verifiedAddresses = profiles.get(mentionStr) || [];
+        const verifiedAddresses = fidToVerifiedAddresses.get(mentionStr) || [];
         payload.tags.push(...verifiedAddresses);
       }
     }
@@ -36,7 +32,11 @@ function handleMentions(
 }
 
 // Handler for staging casts
-export async function embedStagingCasts(casts: StagingFarcasterCast[]) {
+export async function embedStagingCasts(
+  casts: StagingFarcasterCast[],
+  fidToFname: Map<string, string>,
+  fidToVerifiedAddresses: Map<string, string[]>
+) {
   if (casts.length === 0) {
     // Handle empty array case, possibly return early or log a warning
     console.warn('No casts to embed');
@@ -67,12 +67,17 @@ export async function embedStagingCasts(casts: StagingFarcasterCast[]) {
 
     content = cleanTextForEmbedding(content);
 
-    const payload = createBasePayload(cast, content, profiles, fidToFname);
+    const payload = createBasePayload(
+      cast,
+      content,
+      fidToVerifiedAddresses,
+      fidToFname
+    );
     payload.urls = getCastEmbedUrls(cast.embeds);
 
     // Handle mentions for staging format
     if (cast.mentions) {
-      handleMentions(cast.mentions, payload, profiles, cast.hash);
+      handleMentions(cast.mentions, payload, fidToVerifiedAddresses, cast.hash);
     }
 
     finalizePayload(payload);
@@ -83,7 +88,11 @@ export async function embedStagingCasts(casts: StagingFarcasterCast[]) {
 }
 
 // Handler for production casts
-export async function embedProductionCasts(casts: FarcasterCast[]) {
+export async function embedProductionCasts(
+  casts: FarcasterCast[],
+  fidToFname: Map<string, string>,
+  fidToVerifiedAddresses: Map<string, string[]>
+) {
   if (casts.length === 0) {
     // Handle empty array case, possibly return early or log a warning
     console.warn('No casts to embed');
@@ -108,12 +117,22 @@ export async function embedProductionCasts(casts: FarcasterCast[]) {
 
     content = cleanTextForEmbedding(content);
 
-    const payload = createBasePayload(cast, content, profiles, fidToFname);
+    const payload = createBasePayload(
+      cast,
+      content,
+      fidToVerifiedAddresses,
+      fidToFname
+    );
     payload.urls = getCastEmbedUrls(cast.embeds);
 
     // Handle mentions for production format
     if (cast.mentioned_fids) {
-      handleMentions(cast.mentioned_fids, payload, profiles, cast.hash);
+      handleMentions(
+        cast.mentioned_fids,
+        payload,
+        fidToVerifiedAddresses,
+        cast.hash
+      );
     }
 
     finalizePayload(payload);

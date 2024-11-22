@@ -1,9 +1,12 @@
 import { Client } from 'pg';
 import { embedProductionCasts } from '../embedding/embed-casts';
 import { FarcasterCast } from '../../types/types';
+import { getFidToFname, getFidToVerifiedAddresses } from '../download-csvs';
 
 export async function backfillCastEmbeds(members: { fid: number }[]) {
   console.log('Starting cast embed backfill for new members...');
+  const fidToFname = getFidToFname();
+  const profiles = getFidToVerifiedAddresses();
 
   // Create a new PostgreSQL client
   const client = new Client({
@@ -55,7 +58,7 @@ export async function backfillCastEmbeds(members: { fid: number }[]) {
 
         console.log(`Embedding ${res.rows.length} casts...`);
         const embedStartTime = Date.now();
-        await embedProductionCasts(res.rows);
+        await embedProductionCasts(res.rows, fidToFname, profiles);
         const embedDuration = Date.now() - embedStartTime;
 
         lastProcessedId = res.rows[res.rows.length - 1].id;

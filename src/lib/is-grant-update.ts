@@ -4,12 +4,11 @@ import { FarcasterCast, Grant } from '../types/types';
 import { cleanTextForEmbedding } from './embed';
 import { getCastEmbedUrls } from './getCastEmbedUrls';
 import { insertMentionsIntoText } from './mentions/add-mentions';
-import { getFidToFname } from './download-csvs';
-const fidToFname = getFidToFname();
 
 export async function checkGrantUpdates(
   casts: (FarcasterCast & { grantIds: string[] })[],
-  grants: Grant[]
+  grants: Grant[],
+  fidToFname: Map<string, string>
 ) {
   const payloads: IsGrantUpdateJobBody[] = [];
 

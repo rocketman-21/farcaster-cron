@@ -1,6 +1,10 @@
 import { Client } from 'pg';
 import { embedProductionCasts } from '../lib/embedding/embed-casts';
-import { ensureDataFilesExist } from '../lib/download-csvs';
+import {
+  ensureDataFilesExist,
+  getFidToFname,
+  getFidToVerifiedAddresses,
+} from '../lib/download-csvs';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
@@ -11,6 +15,8 @@ const lastProcessedFid = 368096;
 
 export async function backfillEmbed() {
   console.log('Starting cast embed backfill...');
+  const fidToFname = getFidToFname();
+  const profiles = getFidToVerifiedAddresses();
 
   // Create a new PostgreSQL client
   const client = new Client({
@@ -75,7 +81,7 @@ export async function backfillEmbed() {
 
         console.log(`Embedding ${res.rows.length} casts...`);
         const embedStartTime = Date.now();
-        await embedProductionCasts(res.rows);
+        await embedProductionCasts(res.rows, fidToFname, profiles);
         const embedDuration = Date.now() - embedStartTime;
 
         currentLastId = res.rows[res.rows.length - 1].id;

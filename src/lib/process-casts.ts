@@ -11,7 +11,7 @@ import {
   FarcasterCast,
 } from '../types/types';
 import { checkGrantUpdates } from './is-grant-update';
-import { getFidToVerifiedAddresses } from './download-csvs';
+import { getFidToFname, getFidToVerifiedAddresses } from './download-csvs';
 import { getGrants } from './download-csvs';
 
 // Helper function to check if root parent URL is valid
@@ -36,6 +36,8 @@ export async function processCastsFromStagingTable(
   type: IngestionType,
   client: Client
 ) {
+  const fidToFname = getFidToFname();
+
   if (type === 'casts') {
     // Read and parse nounish citizens CSV
     const csvPath = path.resolve(__dirname, '../data/nounish-citizens.csv');
@@ -93,7 +95,11 @@ export async function processCastsFromStagingTable(
       const filteredRowsWithGrantData = getFilteredRowsWithGrantData(rows);
 
       if (filteredRowsWithGrantData.length > 0) {
-        await checkGrantUpdates(filteredRowsWithGrantData, getGrants());
+        await checkGrantUpdates(
+          filteredRowsWithGrantData,
+          getGrants(),
+          fidToFname
+        );
         console.log(
           `Successfully checked grant updates for batch of ${filteredRowsWithGrantData.length} casts (offset: ${offset})`
         );
