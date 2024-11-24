@@ -1,61 +1,39 @@
 import { IsGrantUpdateJobBody } from './job';
 import { postBulkIsGrantsUpdateRequest } from './queue';
-import { Grant, StagingFarcasterCast } from '../types/types';
+import { StagingFarcasterCast } from '../types/types';
 import { cleanTextForEmbedding } from './embed';
 import { getCastEmbedUrls } from './getCastEmbedUrls';
 import { insertMentionsIntoText } from './mentions/add-mentions';
 
 export async function checkGrantUpdates(
-  casts: (StagingFarcasterCast & { grantIds: string[] })[],
-  grants: Grant[],
+  casts: StagingFarcasterCast[],
   fidToFname: Map<string, string>
 ) {
   const payloads: IsGrantUpdateJobBody[] = [];
 
   for (const cast of casts) {
     // Use the ordered arrays of grantIds and parentContracts
-    for (let i = 0; i < cast.grantIds.length; i++) {
-      const grantId = cast.grantIds[i];
+    const textWithMentions = insertMentionsIntoText(
+      cast.text,
+      JSON.parse(cast.mentions_positions || '[]'),
+      cast.mentions || [],
+      fidToFname
+    );
 
-      // Find matching grant
-      const grant = grants.find((g) => g.id === grantId);
-      if (!grant) {
-        console.error(`No grant found for id ${grantId}`);
-        continue;
-      }
+    const payload: IsGrantUpdateJobBody = {
+      castContent: cleanTextForEmbedding(textWithMentions),
+      castHash: `0x${cast.hash.toString('hex')}`,
+      urls: getCastEmbedUrls(cast.embeds),
+      builderFid: cast.fid.toString(),
+    };
 
-      // Find parent grant where contract matches recipient
-      const parentGrant = grants.find(
-        (g) => g.recipient.toLowerCase() === grant.parentContract.toLowerCase()
+    if (payload.castContent || payload.urls.length > 0) {
+      payloads.push(payload);
+    } else {
+      console.log(
+        `Skipping cast ${cast.id} because it has no content or urls`,
+        cast
       );
-
-      const textWithMentions = insertMentionsIntoText(
-        cast.text,
-        JSON.parse(cast.mentions_positions || '[]'),
-        cast.mentions || [],
-        fidToFname
-      );
-
-      const payload: IsGrantUpdateJobBody = {
-        castContent: cleanTextForEmbedding(textWithMentions),
-        grantDescription: cleanTextForEmbedding(grant.description || ''),
-        parentFlowDescription: cleanTextForEmbedding(
-          parentGrant?.description || ''
-        ),
-        castHash: `0x${cast.hash.toString('hex')}`,
-        grantId: grant.id,
-        urls: getCastEmbedUrls(cast.embeds),
-        builderFid: cast.fid.toString(),
-      };
-
-      if (payload.castContent || payload.urls.length > 0) {
-        payloads.push(payload);
-      } else {
-        console.log(
-          `Skipping cast ${cast.id} because it has no content or urls`,
-          cast
-        );
-      }
     }
   }
 

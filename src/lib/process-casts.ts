@@ -1,9 +1,6 @@
 import { Client } from 'pg';
 import { IngestionType } from './s3';
-import {
-  embedProductionCasts,
-  embedStagingCasts,
-} from './embedding/embed-casts';
+import { embedStagingCasts } from './embedding/embed-casts';
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
@@ -101,11 +98,7 @@ export async function processCastsFromStagingTable(
         console.log(
           `Checking grant updates for batch of ${filteredRowsWithGrantData.length} casts (offset: ${offset})`
         );
-        await checkGrantUpdates(
-          filteredRowsWithGrantData,
-          getGrants(),
-          fidToFname
-        );
+        await checkGrantUpdates(filteredRowsWithGrantData, fidToFname);
         console.log(
           `Successfully checked grant updates for batch of ${filteredRowsWithGrantData.length} casts (offset: ${offset})`
         );
@@ -118,7 +111,7 @@ export async function processCastsFromStagingTable(
 
 function getFilteredRowsWithGrantData(
   rows: StagingFarcasterCast[]
-): (StagingFarcasterCast & { grantIds: string[] })[] {
+): StagingFarcasterCast[] {
   const grants = getGrants();
   const profiles = getFidToVerifiedAddresses();
 
@@ -126,10 +119,7 @@ function getFilteredRowsWithGrantData(
     .map((row) => {
       const result = filterGrantRecipients(row, profiles, grants);
       if (!result.isValid) return null;
-      return {
-        ...row,
-        grantIds: result.grantIds,
-      };
+      return row;
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
 }
@@ -138,7 +128,7 @@ function filterGrantRecipients(
   cast: StagingFarcasterCast,
   profiles: Map<string, string[]>,
   grants: Grant[]
-): { isValid: boolean; grantIds: string[] } {
+): { isValid: boolean } {
   // Get profile for this cast's FID
   const verifiedAddresses = profiles.get(cast.fid.toString());
 
@@ -151,7 +141,7 @@ function filterGrantRecipients(
     verifiedAddresses.length === 0 ||
     !isValidRootParentUrl(cast.root_parent_url)
   ) {
-    return { isValid: false, grantIds: [] };
+    return { isValid: false };
   }
 
   // Handle case where verified_addresses is a string instead of array
@@ -167,11 +157,10 @@ function filterGrantRecipients(
   );
 
   if (matchingGrants.length === 0) {
-    return { isValid: false, grantIds: [] };
+    return { isValid: false };
   }
 
   return {
     isValid: true,
-    grantIds: matchingGrants.map((g) => g.id),
   };
 }

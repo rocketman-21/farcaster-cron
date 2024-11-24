@@ -37,14 +37,16 @@ export const validTags = [
 
 export interface IsGrantUpdateJobBody {
   castContent: string;
-  grantDescription: string;
-  parentFlowDescription: string;
   castHash: string;
-  grantId: string;
   builderFid: string;
   urls: string[];
 }
 
 export interface BuilderProfileJobBody {
   fid: string;
+}
+
+export interface StoryJobBody {
+  newCastId: number;
+  grantId: string;
 }

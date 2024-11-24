@@ -3,6 +3,7 @@ import {
   EmbeddingType,
   IsGrantUpdateJobBody,
   JobBody,
+  StoryJobBody,
 } from './job';
 
 const validateEnvVars = () => {
@@ -47,6 +48,7 @@ const makeRequest = async (endpoint: string, body: any) => {
 
       return response;
     } catch (error) {
+      console.error(`Error making request to ${endpoint}:`, error);
       lastError = error;
       if (i < maxRetries - 1) {
         // Don't wait after the last attempt
@@ -92,4 +94,8 @@ export async function postBuilderProfileRequest(
   payloads: BuilderProfileJobBody[]
 ) {
   await makeRequest('/bulk-add-builder-profile', { jobs: payloads });
+}
+
+export async function postBulkStoryRequest(payloads: StoryJobBody[]) {
+  await makeRequest('/bulk-add-story', { jobs: payloads });
 }
