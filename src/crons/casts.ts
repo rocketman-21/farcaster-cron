@@ -6,8 +6,8 @@ import {
 import { prefixes } from '../lib/s3';
 import { ensureDataFilesExist } from '../lib/download-csvs';
 
-// Set min time as 10 minutes ago
-const minTime = Date.now() - 10 * 60 * 1000;
+// Set min time as 14 hours ago
+const minTime = Date.now() - 14 * 60 * 60 * 1000;
 
 export const casts = async () => {
   await ensureDataFilesExist();

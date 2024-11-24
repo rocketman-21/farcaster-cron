@@ -32,7 +32,7 @@
 
 -- -- Create index on hash
 -- CREATE INDEX IF NOT EXISTS idx_production_cast_hash
--- ON production.farcaster_casts (hash);
+-- ON production.farcaster_casts USING HASH (hash);
 
 -- -- Create index on computed_tags
 -- CREATE INDEX IF NOT EXISTS idx_production_cast_computed_tags
