@@ -1,42 +1,42 @@
 -- Create the schema if it doesn't exist
-CREATE SCHEMA IF NOT EXISTS production;
+-- CREATE SCHEMA IF NOT EXISTS production;
 
--- Create the production table if it doesn't exist
-CREATE TABLE IF NOT EXISTS production.farcaster_channel_members (
-    id BIGINT PRIMARY KEY,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    deleted_at TIMESTAMP,
-    timestamp TIMESTAMP,
-    fid BIGINT,
-    channel_id TEXT
-);
+-- -- Create the production table if it doesn't exist
+-- CREATE TABLE IF NOT EXISTS production.farcaster_channel_members (
+--     id BIGINT PRIMARY KEY,
+--     created_at TIMESTAMP,
+--     updated_at TIMESTAMP,
+--     deleted_at TIMESTAMP,
+--     timestamp TIMESTAMP,
+--     fid BIGINT,
+--     channel_id TEXT
+-- );
 
--- Create index on fid
-CREATE INDEX IF NOT EXISTS idx_production_channel_members_fid
-ON production.farcaster_channel_members (fid);
+-- -- Create index on fid
+-- CREATE INDEX IF NOT EXISTS idx_production_channel_members_fid
+-- ON production.farcaster_channel_members (fid);
 
--- Create index on channel_id
-CREATE INDEX IF NOT EXISTS idx_production_channel_members_channel_id
-ON production.farcaster_channel_members (channel_id);
+-- -- Create index on channel_id
+-- CREATE INDEX IF NOT EXISTS idx_production_channel_members_channel_id
+-- ON production.farcaster_channel_members (channel_id);
 
--- Create the staging schema if it doesn't exist
-CREATE SCHEMA IF NOT EXISTS staging;
+-- -- Create the staging schema if it doesn't exist
+-- CREATE SCHEMA IF NOT EXISTS staging;
 
--- Create the staging table if it doesn't exist
-CREATE TABLE IF NOT EXISTS staging.farcaster_channel_members (
-    id BIGINT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    deleted_at TIMESTAMP,
-    timestamp TIMESTAMP,
-    fid BIGINT,
-    channel_id TEXT
-);
+-- -- Create the staging table if it doesn't exist
+-- CREATE TABLE IF NOT EXISTS staging.farcaster_channel_members (
+--     id BIGINT,
+--     created_at TIMESTAMP,
+--     updated_at TIMESTAMP,
+--     deleted_at TIMESTAMP,
+--     timestamp TIMESTAMP,
+--     fid BIGINT,
+--     channel_id TEXT
+-- );
 
--- Create index on fid
-CREATE INDEX IF NOT EXISTS idx_staging_channel_members_fid
-ON staging.farcaster_channel_members (fid);
+-- -- Create index on fid
+-- CREATE INDEX IF NOT EXISTS idx_staging_channel_members_fid
+-- ON staging.farcaster_channel_members (fid);
 
 -- Migration script with temporary table for deduplication
 DO $$

@@ -1,57 +1,57 @@
--- Create the schema if it doesn't exist
-CREATE SCHEMA IF NOT EXISTS production;
+-- -- Create the schema if it doesn't exist
+-- CREATE SCHEMA IF NOT EXISTS production;
 
--- Create the production table if it doesn't exist
-CREATE TABLE IF NOT EXISTS production.farcaster_profile (
-    fname TEXT,
-    display_name TEXT,
-    avatar_url TEXT,
-    bio TEXT,
-    verified_addresses TEXT[],
-    updated_at TIMESTAMP,
-    fid BIGINT PRIMARY KEY
-);
+-- -- Create the production table if it doesn't exist
+-- CREATE TABLE IF NOT EXISTS production.farcaster_profile (
+--     fname TEXT,
+--     display_name TEXT,
+--     avatar_url TEXT,
+--     bio TEXT,
+--     verified_addresses TEXT[],
+--     updated_at TIMESTAMP,
+--     fid BIGINT PRIMARY KEY
+-- );
 
--- Create index on verified_addresses
-CREATE INDEX IF NOT EXISTS idx_production_verified_addresses
-ON production.farcaster_profile
-USING GIN (verified_addresses);
+-- -- Create index on verified_addresses
+-- CREATE INDEX IF NOT EXISTS idx_production_verified_addresses
+-- ON production.farcaster_profile
+-- USING GIN (verified_addresses);
 
--- Create the staging schema if it doesn't exist
-CREATE SCHEMA IF NOT EXISTS staging;
+-- -- Create the staging schema if it doesn't exist
+-- CREATE SCHEMA IF NOT EXISTS staging;
 
--- Create the staging table if it doesn't exist
-CREATE TABLE IF NOT EXISTS staging.farcaster_profile_with_addresses (
-    fname TEXT,
-    display_name TEXT,
-    avatar_url TEXT,
-    bio TEXT,
-    verified_addresses TEXT,
-    updated_at TIMESTAMP,
-    fid BIGINT
-);
+-- -- Create the staging table if it doesn't exist
+-- CREATE TABLE IF NOT EXISTS staging.farcaster_profile_with_addresses (
+--     fname TEXT,
+--     display_name TEXT,
+--     avatar_url TEXT,
+--     bio TEXT,
+--     verified_addresses TEXT,
+--     updated_at TIMESTAMP,
+--     fid BIGINT
+-- );
 
-CREATE INDEX IF NOT EXISTS idx_staging_fid
-ON staging.farcaster_profile_with_addresses (fid);
+-- CREATE INDEX IF NOT EXISTS idx_staging_fid
+-- ON staging.farcaster_profile_with_addresses (fid);
 
--- Define the conversion function
-CREATE OR REPLACE FUNCTION text_to_text_array(input_text TEXT)
-RETURNS TEXT[] AS $$
-BEGIN
-    IF input_text IS NULL THEN
-        RETURN NULL;
-    ELSIF input_text LIKE '[%' THEN
-        RETURN (
-            SELECT array_agg(value)
-            FROM jsonb_array_elements_text(input_text::jsonb) AS t(value)
-        );
-    ELSIF input_text LIKE '%,%' THEN
-        RETURN string_to_array(input_text, ',');
-    ELSE
-        RETURN ARRAY[input_text];
-    END IF;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+-- -- Define the conversion function
+-- CREATE OR REPLACE FUNCTION text_to_text_array(input_text TEXT)
+-- RETURNS TEXT[] AS $$
+-- BEGIN
+--     IF input_text IS NULL THEN
+--         RETURN NULL;
+--     ELSIF input_text LIKE '[%' THEN
+--         RETURN (
+--             SELECT array_agg(value)
+--             FROM jsonb_array_elements_text(input_text::jsonb) AS t(value)
+--         );
+--     ELSIF input_text LIKE '%,%' THEN
+--         RETURN string_to_array(input_text, ',');
+--     ELSE
+--         RETURN ARRAY[input_text];
+--     END IF;
+-- END;
+-- $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- Migration script with temporary table for deduplication
 DO $$
