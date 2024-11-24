@@ -3,24 +3,24 @@ const encoder = new TextEncoder();
 
 // Precompute byte to code unit position mapping
 function createByteToCodeUnitMap(text: string): number[] {
-  const encodedText = encoder.encode(text);
-
   const byteToCodeUnitMap: number[] = [];
   let codeUnitPos = 0;
+  let bytePos = 0;
 
-  for (let bytePos = 0; bytePos < encodedText.length; ) {
+  while (codeUnitPos < text.length) {
     const codePoint = text.codePointAt(codeUnitPos);
     if (codePoint === undefined) break;
 
     const codePointStr = String.fromCodePoint(codePoint);
     const codeUnitLength = codePointStr.length;
-    const codePointByteLength = encoder.encode(codePointStr).length;
+    const encodedBytes = encoder.encode(codePointStr);
+    const byteLength = encodedBytes.length;
 
-    for (let i = 0; i < codePointByteLength; i++) {
+    for (let i = 0; i < byteLength; i++) {
       byteToCodeUnitMap[bytePos + i] = codeUnitPos;
     }
 
-    bytePos += codePointByteLength;
+    bytePos += byteLength;
     codeUnitPos += codeUnitLength;
   }
 
@@ -32,10 +32,13 @@ function bytePositionToCodeUnitPosition(
   byteToCodeUnitMap: number[],
   bytePosition: number
 ): number {
-  return (
-    byteToCodeUnitMap[bytePosition] ||
-    byteToCodeUnitMap[byteToCodeUnitMap.length - 1]
-  );
+  if (bytePosition < 0) {
+    return 0;
+  } else if (bytePosition >= byteToCodeUnitMap.length) {
+    return byteToCodeUnitMap[byteToCodeUnitMap.length - 1];
+  } else {
+    return byteToCodeUnitMap[bytePosition];
+  }
 }
 
 // Helper function to insert mentions into the text
@@ -94,7 +97,7 @@ export function insertMentionsIntoText(
 
     const fidString = mention.fid.toString();
     const fname = fidToFname.get(fidString) || fidString;
-    const mentionText = `@${fname}`;
+    const mentionText = `@${fname} `;
     const position = mention.position;
 
     // Append the text before the mention
