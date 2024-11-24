@@ -136,11 +136,7 @@ function filterGrantRecipients(
     console.error(`No profile found for FID ${cast.fid}`);
   }
 
-  if (
-    !verifiedAddresses ||
-    verifiedAddresses.length === 0 ||
-    !isValidRootParentUrl(cast.root_parent_url)
-  ) {
+  if (!verifiedAddresses || verifiedAddresses.length === 0) {
     return { isValid: false };
   }
 
