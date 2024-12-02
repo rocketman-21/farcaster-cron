@@ -16,8 +16,6 @@
 --     text TEXT,
 --     embeds TEXT,
 --     embeds_array JSONB,
---     mentions TEXT,
---     mentions_positions TEXT,
 --     root_parent_hash BYTEA,
 --     root_parent_url TEXT,
 --     computed_tags TEXT[],
