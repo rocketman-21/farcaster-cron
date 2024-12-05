@@ -23,7 +23,7 @@ export async function checkGrantUpdates(
     const payload: IsGrantUpdateJobBody = {
       castContent: cleanTextForEmbedding(textWithMentions),
       castHash: `0x${cast.hash.toString('hex')}`,
-      urls: getCastEmbedUrls(cast.embeds),
+      urls: getCastEmbedUrls(cast.embeds, fidToFname),
       builderFid: cast.fid.toString(),
     };
 

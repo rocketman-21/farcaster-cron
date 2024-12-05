@@ -34,7 +34,7 @@ importers:
         specifier: ^8.0.1
         version: 8.2.6(size-limit@8.2.6)
       '@tsconfig/recommended':
-        specifier: ^1.0.1
+        specifier: ^1.0.8
         version: 1.0.8
       '@types/node-cron':
         specifier: ^3.0.2

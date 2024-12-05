@@ -47,7 +47,7 @@
   ],
   "devDependencies": {
     "@size-limit/preset-small-lib": "^8.0.1",
-    "@tsconfig/recommended": "^1.0.1",
+    "@tsconfig/recommended": "^1.0.8",
     "@types/node-cron": "^3.0.2",
     "@types/pg": "^8.11.10",
     "dts-cli": "^1.6.0",

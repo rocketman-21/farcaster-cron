@@ -68,7 +68,7 @@ export async function embedStagingCasts(
       fidToVerifiedAddresses,
       fidToFname
     );
-    payload.urls = getCastEmbedUrls(cast.embeds);
+    payload.urls = getCastEmbedUrls(cast.embeds, fidToFname);
 
     // Handle mentions for staging format
     if (cast.mentions) {
@@ -118,7 +118,7 @@ export async function embedProductionCasts(
       fidToVerifiedAddresses,
       fidToFname
     );
-    payload.urls = getCastEmbedUrls(cast.embeds);
+    payload.urls = getCastEmbedUrls(cast.embeds, fidToFname);
 
     // Handle mentions for production format
     if (cast.mentioned_fids) {
