@@ -43,7 +43,7 @@ const downloadGrants = async (): Promise<void> => {
 
       // Create a CSV formatter
       const csvStream = CSV.format({
-        headers: ['id', 'recipient', 'description', 'parentContract'],
+        headers: ['id', 'recipient', 'description', 'parent_contract'],
       });
       csvStream.pipe(writeStream);
 
@@ -51,7 +51,7 @@ const downloadGrants = async (): Promise<void> => {
 
       // Create a query stream
       const query = new QueryStream(
-        `SELECT id, recipient, description, "parentContract"
+        `SELECT id, recipient, description, "parent_contract"
          FROM "public"."Grant"`,
         [], // No query parameters
         { highWaterMark: 10000 }
@@ -69,7 +69,7 @@ const downloadGrants = async (): Promise<void> => {
             id: row.id,
             recipient: row.recipient || '',
             description: row.description || '',
-            parentContract: row.parentContract || '',
+            parent_contract: row.parent_contract || '',
           });
           grantCount++;
           callback();
