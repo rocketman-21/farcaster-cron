@@ -49,7 +49,9 @@ export const builderProfiles = async () => {
         .filter((job): job is BuilderProfileJobBody => job !== null);
 
       console.log(`Processing batch of ${jobs.length} builders...`);
-      await postBuilderProfileRequest(jobs);
+      if (jobs.length > 0) {
+        await postBuilderProfileRequest(jobs);
+      }
     }
 
     console.log('Completed processing all builder profiles');
