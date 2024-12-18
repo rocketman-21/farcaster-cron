@@ -28,8 +28,8 @@ export const builderProfiles = async () => {
     const grants = getGrants();
 
     const addressToFid = getAddressToFid();
-    // Process citizens in batches of 3
-    const batchSize = 3;
+    // Process citizens in batches of 1
+    const batchSize = 1;
     for (let i = 0; i < grants.length; i += batchSize) {
       const batch = grants.slice(i, i + batchSize);
       if (batch.length === 0) continue;
@@ -52,6 +52,9 @@ export const builderProfiles = async () => {
       if (jobs.length > 0) {
         await postBuilderProfileRequest(jobs);
       }
+
+      // wait 30 seconds
+      await new Promise((resolve) => setTimeout(resolve, 30000));
     }
 
     console.log('Completed processing all builder profiles');

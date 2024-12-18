@@ -13,6 +13,7 @@ const twoMinutes = '*/2 * * * *';
 const tenMinutes = '*/10 * * * *';
 const twoHours = '0 0 */2 * *';
 const threeDays = '0 0 */3 * *';
+const sevenDays = '0 0 */7 * *';
 
 const schedules: Record<string, { dev: string; prod: string }> = {
   casts: { dev: fiveSeconds, prod: tenMinutes },
@@ -21,7 +22,7 @@ const schedules: Record<string, { dev: string; prod: string }> = {
   'channel-members': { dev: fiveSeconds, prod: tenMinutes },
   downloadNounishCitizens: { dev: fiveSeconds, prod: twoHours },
   downloadGrants: { dev: fiveSeconds, prod: twoHours },
-  builderProfiles: { dev: fiveSeconds, prod: threeDays },
+  builderProfiles: { dev: fiveSeconds, prod: sevenDays },
 };
 
 const isProcessing: Record<string, boolean> = {
