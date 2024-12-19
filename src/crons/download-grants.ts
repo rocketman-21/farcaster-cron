@@ -52,7 +52,8 @@ const downloadGrants = async (): Promise<void> => {
       // Create a query stream
       const query = new QueryStream(
         `SELECT id, recipient, description, "parent_contract"
-         FROM "onchain"."Grant"`,
+         FROM "onchain"."Grant"
+         WHERE "is_active" = true`,
         [], // No query parameters
         { highWaterMark: 10000 }
       );
